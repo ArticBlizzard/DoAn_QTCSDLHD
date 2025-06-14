@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AddProduct from './AddProduct';
 
 // --- Helper function to check for token ---
 const isLoggedIn = () => {
@@ -141,6 +142,12 @@ function Dashboard({ onLogout }) {
       )}
 
       {showSellerForm && <BecomeSellerForm onSellerSuccess={fetchUserProfile} />}
+
+      {isSeller && (
+        <div style={{marginTop: 32}}>
+          <AddProduct />
+        </div>
+      )}
 
       <button onClick={onLogout} className="submit-btn logout-btn">Đăng xuất</button>
     </div>
