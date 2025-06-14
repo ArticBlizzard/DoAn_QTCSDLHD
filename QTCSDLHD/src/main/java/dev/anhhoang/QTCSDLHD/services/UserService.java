@@ -1,5 +1,5 @@
 package dev.anhhoang.QTCSDLHD.services;
-
+import dev.anhhoang.QTCSDLHD.dto.UserProfileResponse;
 import dev.anhhoang.QTCSDLHD.dto.BecomeSellerRequest;
 import dev.anhhoang.QTCSDLHD.models.Role;
 import dev.anhhoang.QTCSDLHD.models.SellerProfile;
@@ -40,5 +40,25 @@ public class UserService {
 
         // 6. Save the updated user object to the database
         return userRepository.save(user);
+
+    }
+    public UserProfileResponse findUserProfileByEmail(String email) {
+        // 1. Find the user entity from the database
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        // 2. Create a new DTO object to hold the response data
+        UserProfileResponse profileResponse = new UserProfileResponse();
+
+        // 3. Manually map the data from the User entity to the DTO
+        profileResponse.setId(user.getId());
+        profileResponse.setEmail(user.getEmail());
+        profileResponse.setFullName(user.getFullName());
+        profileResponse.setRoles(user.getRoles());
+        profileResponse.setBuyerProfile(user.getBuyerProfile());
+        profileResponse.setSellerProfile(user.getSellerProfile());
+
+        // 4. Return the DTO. The hashed password is never exposed.
+        return profileResponse;
     }
 }

@@ -8,7 +8,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+import dev.anhhoang.QTCSDLHD.dto.UserProfileResponse;
+import org.springframework.web.bind.annotation.GetMapping;
 import java.security.Principal;
 
 @RestController
@@ -29,5 +30,11 @@ public class UserController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getCurrentUserProfile(Principal principal) {
+        // principal.getName() gives us the email of the currently authenticated user
+        UserProfileResponse userProfile = userService.findUserProfileByEmail(principal.getName());
+        return ResponseEntity.ok(userProfile);
     }
 }
