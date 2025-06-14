@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './AddProduct.css';
 
-const AddProduct = () => {
+const AddProduct = ({ onSuccess }) => {
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -36,6 +36,7 @@ const AddProduct = () => {
       );
       setMessage('Thêm sản phẩm thành công!');
       setForm({ name: '', description: '', price: '', imageUrl: '', category: '', stock: '' });
+      if (onSuccess) onSuccess(form.category || 'Khác');
     } catch (err) {
       setMessage(err.response?.data || 'Có lỗi xảy ra!');
     }

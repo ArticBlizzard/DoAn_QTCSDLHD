@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AddProduct from './AddProduct';
+import SellerProductList from './SellerProductList';
 
 // --- Helper function to check for token ---
 const isLoggedIn = () => {
@@ -70,7 +70,7 @@ function BecomeSellerForm({ onSellerSuccess }) {
 
 
 // --- User Dashboard Component ---
-function Dashboard({ onLogout }) {
+function Dashboard({ onLogout, onShowProductList }) {
   const [userProfile, setUserProfile] = useState(null);
   const [error, setError] = useState('');
   const [showSellerForm, setShowSellerForm] = useState(false);
@@ -129,26 +129,21 @@ function Dashboard({ onLogout }) {
       <p><strong>Email:</strong> {userProfile.email}</p>
       <p><strong>Họ và Tên:</strong> {userProfile.fullName}</p>
       <p><strong>Vai trò:</strong> {userProfile.roles.join(', ')}</p>
-      
       {isSeller && userProfile.sellerProfile && (
         <div className="profile-section">
           <h3>Hồ sơ Người bán</h3>
           <p><strong>Tên cửa hàng:</strong> {userProfile.sellerProfile.shopName}</p>
         </div>
       )}
-
       {!isSeller && !showSellerForm && (
         <button onClick={handleBecomeSellerClick} className="submit-btn">Trở thành Người bán</button>
       )}
-
       {showSellerForm && <BecomeSellerForm onSellerSuccess={fetchUserProfile} />}
-
       {isSeller && (
-        <div style={{marginTop: 32}}>
-          <AddProduct />
-        </div>
+        <button className="add-btn" onClick={onShowProductList}>
+          Xem danh mục sản phẩm
+        </button>
       )}
-
       <button onClick={onLogout} className="submit-btn logout-btn">Đăng xuất</button>
     </div>
   );
@@ -256,6 +251,7 @@ function SignUp() {
 function App() {
   // This state now controls what the user sees
   const [auth, setAuth] = useState(isLoggedIn());
+  const [showProductList, setShowProductList] = useState(false);
 
   const handleLoginSuccess = () => {
     setAuth(true);
@@ -269,11 +265,22 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Chào mừng đến với Cửa hàng</h1>
+        {showProductList ? (
+          <div style={{position:'relative', display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <button className="back-btn" onClick={() => setShowProductList(false)} style={{position:'absolute', left:0}}>
+              Quay lại trang chính
+            </button>
+            <h1 style={{margin:0, textAlign:'center', width:'100%'}}>Danh mục sản phẩm</h1>
+          </div>
+        ) : (
+          <h1>Chào mừng đến với Cửa hàng</h1>
+        )}
       </header>
       <main className="main-layout">
-        {auth ? (
-          <Dashboard onLogout={handleLogout} />
+        {showProductList ? (
+          <SellerProductList />
+        ) : auth ? (
+          <Dashboard onLogout={handleLogout} onShowProductList={() => setShowProductList(true)} />
         ) : (
           <>
             <SignUp />
