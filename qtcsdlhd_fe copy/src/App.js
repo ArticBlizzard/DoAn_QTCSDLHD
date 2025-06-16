@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import ProductCatalog from './ProductCatalog';
+import ShoppingCart from './ShoppingCart';
+import ProductDetail from './ProductDetail';
+import './App.css'; // Make sure App.css is imported
 
 // --- Helper function to check for token ---
 const isLoggedIn = () => {
@@ -60,7 +64,7 @@ function BecomeSellerForm({ onSellerSuccess }) {
           <label htmlFor="phoneNumber">Số điện thoại</label>
           <input type="text" id="phoneNumber" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required />
         </div>
-        <button type="submit" className="submit-btn secondary-btn">Xác nhận</button>
+        <button type="submit" className="submit-btn">Xác nhận</button>
       </form>
       {message && <p className="message">{message}</p>}
     </div>
@@ -74,7 +78,7 @@ function Dashboard({ onLogout }) {
   const [error, setError] = useState('');
   const [showSellerForm, setShowSellerForm] = useState(false);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -92,7 +96,7 @@ function Dashboard({ onLogout }) {
       if (response.ok) {
         const data = await response.json();
         setUserProfile(data);
-        setShowSellerForm(false); // Hide form after successful profile fetch
+        setShowSellerForm(false); // This will now only hide the form after successful seller registration/profile fetch
       } else {
         // Handle cases like expired token
         setError('Không thể lấy thông tin người dùng. Vui lòng đăng nhập lại.');
@@ -101,19 +105,19 @@ function Dashboard({ onLogout }) {
     } catch (err) {
       setError('Lỗi mạng khi lấy thông tin người dùng.');
     }
-  };
+  }, [onLogout]); // onLogout is a dependency for useCallback
 
   // useEffect hook to fetch data when the component loads
   useEffect(() => {
     fetchUserProfile();
-  }, []); // The empty array [] means this effect runs only once
+  }, [fetchUserProfile]); // Now fetchUserProfile is stable, so this effect runs only when necessary
 
   const handleBecomeSellerClick = () => {
     setShowSellerForm(true);
   };
 
   if (error) {
-    return <div className="dashboard-container"><p className="message">{error}</p></div>;
+    return <div className="dashboard-container"><p className="message error">{error}</p></div>;
   }
 
   if (!userProfile) {
@@ -128,7 +132,7 @@ function Dashboard({ onLogout }) {
       <p><strong>Email:</strong> {userProfile.email}</p>
       <p><strong>Họ và Tên:</strong> {userProfile.fullName}</p>
       <p><strong>Vai trò:</strong> {userProfile.roles.join(', ')}</p>
-      
+
       {isSeller && userProfile.sellerProfile && (
         <div className="profile-section">
           <h3>Hồ sơ Người bán</h3>
@@ -171,7 +175,7 @@ function Login({ onLoginSuccess }) {
         setMessage(`Lỗi: ${data.message || 'Sai email hoặc mật khẩu'}`);
       }
     } catch (error) {
-       setMessage(`Lỗi: Không thể kết nối đến máy chủ. ${error.message}`);
+      setMessage(`Lỗi: Không thể kết nối đến máy chủ. ${error.message}`);
     }
   };
 
@@ -247,65 +251,233 @@ function SignUp() {
 
 // --- Main App Component ---
 function App() {
-  // This state now controls what the user sees
-  const [auth, setAuth] = useState(isLoggedIn());
+  const [isLoggedInUser, setIsLoggedInUser] = useState(isLoggedIn());
+  const [currentView, setCurrentView] = useState('catalog'); // 'catalog', 'cart', 'detail', 'dashboard'
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [message, setMessage] = useState('');
+  const [messageTimeoutId, setMessageTimeoutId] = useState(null); // New state for timeout ID
+  const [cartItems, setCartItems] = useState([]);
+
+  const displayMessage = (msg, duration = 3000) => {
+    // Clear any existing timeout
+    if (messageTimeoutId) {
+      clearTimeout(messageTimeoutId);
+    }
+    setMessage(msg);
+    const id = setTimeout(() => {
+      setMessage('');
+      setMessageTimeoutId(null);
+    }, duration);
+    setMessageTimeoutId(id);
+  };
+
+  useEffect(() => {
+    if (isLoggedInUser && currentView === 'cart') {
+      fetchCartProducts();
+    }
+  }, [isLoggedInUser, currentView]);
 
   const handleLoginSuccess = () => {
-    setAuth(true);
+    setIsLoggedInUser(true);
+    setCurrentView('catalog'); // Navigate to catalog after login
+    displayMessage('Đăng nhập thành công!'); // Use displayMessage
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    setAuth(false);
+    setIsLoggedInUser(false);
+    setCurrentView('login'); // Navigate to login after logout
+    displayMessage('Bạn đã đăng xuất.'); // Use displayMessage
   };
+
+  const fetchCartProducts = async () => {
+    if (!isLoggedInUser) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/api/customers/cart', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCartItems(data);
+      } else {
+        const errorText = await response.text();
+        displayMessage(`Error fetching cart: ${errorText}`, 5000);
+      }
+    } catch (error) {
+      displayMessage(`Network error fetching cart: ${error.message}`, 5000);
+    }
+  };
+
+  const handleAddToCart = async (productId, quantity) => {
+    if (!isLoggedInUser) {
+      displayMessage('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.', 5000);
+      setCurrentView('login'); // Redirect to login if not logged in
+      return false; // Indicate failure
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/api/customers/cart/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ productId, quantity })
+      });
+
+      if (response.ok) {
+        displayMessage('Sản phẩm đã được thêm vào giỏ hàng!'); // Use displayMessage
+        fetchCartProducts(); // Refresh cart after adding
+        return true; // Indicate success
+      } else {
+        const errorText = await response.text();
+        displayMessage(`Lỗi thêm vào giỏ hàng: ${errorText}`, 5000);
+        return false; // Indicate failure
+      }
+    } catch (error) {
+      displayMessage(`Lỗi mạng khi thêm vào giỏ hàng: ${error.message}`, 5000);
+      return false; // Indicate failure
+    }
+  };
+
+  const handleProductView = (productId) => {
+    setSelectedProductId(productId);
+    setCurrentView('detail');
+    displayMessage('', 0); // Clear any existing messages instantly
+  };
+
+  const handleBackToCatalog = () => {
+    setSelectedProductId(null);
+    setCurrentView('catalog');
+    displayMessage('', 0); // Clear any existing messages instantly
+  };
+
+  const handlePlaceOrder = (orderId) => {
+    displayMessage(`Đơn hàng của bạn đã được đặt thành công! Mã đơn hàng: ${orderId}`); // Use displayMessage
+    // Cart items are cleared by ShoppingCart component, so no need to clear again here.
+    setCurrentView('catalog'); // Navigate to catalog after order
+  };
+
+  const handleUpdateCartQuantity = async (productId, quantity) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8080/api/customers/cart/update-quantity/${productId}/${quantity}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        fetchCartProducts();
+        displayMessage('Số lượng sản phẩm đã được cập nhật.'); // Use displayMessage
+      } else {
+        const errorText = await response.text();
+        displayMessage(`Error updating quantity: ${errorText}`, 5000);
+      }
+    } catch (error) {
+      displayMessage(`Network error updating quantity: ${error.message}`, 5000);
+    }
+  };
+
+  const handleRemoveFromCart = async (productId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8080/api/customers/cart/remove/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        fetchCartProducts();
+        displayMessage('Sản phẩm đã được xóa khỏi giỏ hàng.'); // Use displayMessage
+      } else {
+        const errorText = await response.text();
+        displayMessage(`Error removing from cart: ${errorText}`, 5000);
+      }
+    } catch (error) {
+      displayMessage(`Lỗi mạng khi xóa khỏi giỏ hàng: ${error.message}`, 5000);
+    }
+  };
+
+  let content;
+  if (!isLoggedInUser) {
+    switch (currentView) {
+      case 'login':
+        content = <Login onLoginSuccess={handleLoginSuccess} />;
+        break;
+      case 'signup':
+        content = <SignUp />;
+        break;
+      default:
+        content = <Login onLoginSuccess={handleLoginSuccess} />;
+    }
+  } else {
+    switch (currentView) {
+      case 'catalog':
+        content = <ProductCatalog onAddToCart={handleAddToCart} onProductView={handleProductView} />;
+        break;
+      case 'cart':
+        content = <ShoppingCart
+          cartItems={cartItems}
+          onUpdateQuantity={handleUpdateCartQuantity}
+          onRemoveFromCart={handleRemoveFromCart}
+          onPlaceOrder={handlePlaceOrder}
+        />;
+        break;
+      case 'detail':
+        content = selectedProductId ? (
+          <ProductDetail
+            productId={selectedProductId}
+            onBack={handleBackToCatalog}
+            onAddToCart={handleAddToCart}
+          />
+        ) : (
+          <div className="error-message">Không tìm thấy thông tin sản phẩm</div>
+        );
+        break;
+      case 'dashboard':
+        content = <Dashboard onLogout={handleLogout} />;
+        break;
+      default:
+        content = <ProductCatalog onAddToCart={handleAddToCart} onProductView={handleProductView} />;
+    }
+  }
 
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Chào mừng đến với Cửa hàng</h1>
+        <div className="logo">SHOPEE</div>
+        <nav>
+          {isLoggedInUser ? (
+            <>
+              <button onClick={() => setCurrentView('catalog')}>Sản phẩm</button>
+              <button onClick={() => setCurrentView('cart')}>Giỏ hàng</button>
+              <button onClick={() => setCurrentView('dashboard')}>Bảng điều khiển</button>
+              <button onClick={handleLogout} className="logout-btn">Đăng xuất</button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setCurrentView('login')}>Đăng nhập</button>
+              <button onClick={() => setCurrentView('signup')}>Đăng ký</button>
+              <button onClick={() => setCurrentView('catalog')}>Sản phẩm</button>
+            </>
+          )}
+        </nav>
       </header>
-      <main className="main-layout">
-        {auth ? (
-          <Dashboard onLogout={handleLogout} />
-        ) : (
-          <>
-            <SignUp />
-            <Login onLoginSuccess={handleLoginSuccess} />
-          </>
-        )}
+
+      <main>
+        {message && <p className="message">{message}</p>}
+        {content}
       </main>
     </div>
   );
-}
-
-
-// --- Styles ---
-const styles = `
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-.App { text-align: center; width: 100%; }
-.App-header { background-color: #ffffff; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 40px; border-radius: 8px; }
-.main-layout { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
-.form-container, .dashboard-container { background: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 480px; margin: 0; text-align: left; }
-.dashboard-container p { margin: 10px 0; }
-.profile-section { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
-.nested-form { margin-top: 20px; padding: 20px; box-shadow: none; border: 1px solid #eee; }
-h2, h3, h4 { margin-top: 0; margin-bottom: 20px; color: #333; }
-.form-group { margin-bottom: 20px; text-align: left; }
-.form-group label { display: block; margin-bottom: 5px; color: #666; font-weight: bold; }
-.form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-.submit-btn { width: 100%; padding: 12px; border: none; border-radius: 4px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; transition: background-color 0.3s; margin-top: 10px; }
-.submit-btn:hover { background-color: #0056b3; }
-.secondary-btn { background-color: #28a745; }
-.secondary-btn:hover { background-color: #218838; }
-.logout-btn { background-color: #dc3545; margin-top: 20px; }
-.logout-btn:hover { background-color: #c82333; }
-.message { margin-top: 20px; padding: 10px; border-radius: 4px; color: #333; background-color: #e9ecef; word-wrap: break-word; }
-`;
-if (!document.getElementById('app-styles')) {
-  const styleSheet = document.createElement("style");
-  styleSheet.id = 'app-styles';
-  styleSheet.innerText = styles;
-  document.head.appendChild(styleSheet);
 }
 
 export default App;
