@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: dev.anhhoang.QTCSDLHD.QtcsdlhdApplicationTests
--------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.239 s -- in dev.anhhoang.QTCSDLHD.QtcsdlhdApplicationTests
