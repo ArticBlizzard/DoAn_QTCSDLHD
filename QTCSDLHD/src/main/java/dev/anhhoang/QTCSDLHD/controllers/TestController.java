@@ -14,10 +14,10 @@ public class TestController {
     @GetMapping("/hello")
     public ResponseEntity<String> sayHello() {
         // Get the authentication object from the security context
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        // Get the username (which is our email) from the principal
-        String userEmail = authentication.getName();
+        // Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // // Get the username (which is our email) from the principal
+        // String userEmail = authentication.getName();
 
-        return ResponseEntity.ok("Hello, you are authenticated as: " + userEmail);
+        return ResponseEntity.ok("Hello, you are authenticated as: ");
     }
 }
