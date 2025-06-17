@@ -1,0 +1,232 @@
+.shopping-cart-container {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 25px;
+}
+
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.cart-list {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+}
+
+.cart-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+    gap: 15px;
+}
+
+.cart-item:last-child {
+    border-bottom: none;
+}
+
+.product-thumbnail {
+    width: 80px;
+    height: 80px;
+    min-width: 80px;
+    /* Ensure it doesn't shrink */
+    min-height: 80px;
+    /* Ensure it doesn't shrink */
+    background: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.no-image-thumbnail {
+    width: 100%;
+    height: 100%;
+    background-color: #ccc;
+    /* Placeholder color for no image */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.8em;
+    /* Smaller font size for placeholder text */
+}
+
+.cart-item-details {
+    flex-grow: 1;
+    text-align: left;
+}
+
+.cart-item-details h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.1em;
+    color: #333;
+}
+
+.cart-item-details .price {
+    color: #ff6b35;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.quantity-control button {
+    background-color: #28a745;
+    /* Green for quantity buttons */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1em;
+    transition: background-color 0.3s;
+}
+
+.quantity-control button:hover {
+    background-color: #218838;
+}
+
+.quantity-control span {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    min-width: 30px;
+    text-align: center;
+}
+
+.remove-btn {
+    background-color: #dc3545;
+    /* Red for remove button */
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    transition: background-color 0.3s;
+}
+
+.remove-btn:hover {
+    background-color: #c82333;
+}
+
+.cart-total {
+    text-align: right;
+    margin-top: 20px;
+    font-size: 1.3em;
+    color: #333;
+}
+
+.order-form {
+    margin-top: 40px;
+    padding: 20px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.order-form h4 {
+    margin-top: 0;
+    color: #ff6b35;
+    font-size: 1.2em;
+    border-bottom: 2px solid #ff6b35;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input {
+    width: calc(100% - 22px);
+    /* Account for padding and border */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.submit-btn {
+    background-color: #ff6b35;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: background-color 0.3s;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.submit-btn:hover {
+    background-color: #ff8c5a;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .cart-item {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .product-thumbnail {
+        width: 100px;
+        height: 100px;
+    }
+
+    .cart-item-details {
+        text-align: center;
+        width: 100%;
+    }
+
+    .quantity-control {
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .remove-btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .order-form {
+        padding: 15px;
+    }
+}
