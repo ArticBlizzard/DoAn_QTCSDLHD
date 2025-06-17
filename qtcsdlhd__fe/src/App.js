@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ProductCatalog from './ProductCatalog';
 import ShoppingCart from './ShoppingCart';
 import ProductDetail from './ProductDetail';
+import ShopManagement from './ShopManagement';
 import './App.css'; // Make sure App.css is imported
 
 // --- Helper function to check for token ---
@@ -572,6 +573,9 @@ function App() {
       case 'dashboard':
         content = <Dashboard onLogout={handleLogout} />;
         break;
+      case 'shop-management':
+        content = <ShopManagement />;
+        break;
       default:
         content = <ProductCatalog onAddToCart={handleAddToCart} onProductView={handleProductView} />;
     }
@@ -587,6 +591,7 @@ function App() {
               <button onClick={() => setCurrentView('catalog')}>Sản phẩm</button>
               <button onClick={() => setCurrentView('cart')}>Giỏ hàng</button>
               <button onClick={() => setCurrentView('dashboard')}>Bảng điều khiển</button>
+              <button onClick={() => setCurrentView('shop-management')}>Quản lý sản phẩm</button>
               <button onClick={handleLogout} className="logout-btn">Đăng xuất</button>
             </>
           ) : (
