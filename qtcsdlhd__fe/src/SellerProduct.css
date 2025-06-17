@@ -1,0 +1,48 @@
+.modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #0008;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.seller-product-form {
+  background: #fff;
+  padding: 32px 24px;
+  border-radius: 8px;
+  min-width: 320px;
+  box-shadow: 0 2px 8px #0002;
+}
+.seller-product-form h3 {
+  margin-bottom: 16px;
+}
+.seller-product-form input,
+.seller-product-form textarea {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1em;
+}
+.seller-product-form textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+.seller-product-form button {
+  background: #1976d2;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.seller-product-form button[type="button"] {
+  background: #aaa;
+}
+.seller-product-form button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

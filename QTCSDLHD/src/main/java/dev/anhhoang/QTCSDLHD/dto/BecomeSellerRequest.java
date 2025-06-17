@@ -15,5 +15,4 @@ public class BecomeSellerRequest {
     // We can make the logo optional for the initial request
     private String shopLogoUrl;
     private BusinessType businessType;
-
 }

@@ -32,4 +32,16 @@ public class User {
 
     @Field("seller_profile")
     private SellerProfile sellerProfile; // This will be null if the user is not a seller
+
+    public SellerProfile getSellerProfile() {
+        return sellerProfile;
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
 }
