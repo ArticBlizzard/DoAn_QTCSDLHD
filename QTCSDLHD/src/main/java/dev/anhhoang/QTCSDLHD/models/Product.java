@@ -1,10 +1,12 @@
 package dev.anhhoang.QTCSDLHD.models;
 
-import lombok.Data;
+import java.time.LocalDateTime;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.LocalDateTime;
+import lombok.Data;
 
 @Data
 @Document(collection = "products")
@@ -15,10 +17,12 @@ public class Product {
     private String description;
     private Double price;
     private Integer stock;
-    private String image_url;
+    private String image_url; 
     private String category;
-    private String shop_id;
-    private String shop_name;
+    @Field("shop_id")
+    private String shopid;
+    @Field("shop_name")
+    private String shopname;
     private LocalDateTime created_at;
     private LocalDateTime updated_at;
 }
