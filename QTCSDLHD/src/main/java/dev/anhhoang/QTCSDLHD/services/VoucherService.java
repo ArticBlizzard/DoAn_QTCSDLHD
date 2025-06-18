@@ -76,4 +76,16 @@ public class VoucherService {
     public Voucher getVoucherById(String id) {
         return voucherRepository.findById(id).orElse(null);
     }
+
+    public boolean removeProductFromVoucher(String voucherId, String productId) {
+        Optional<Voucher> optionalVoucher = voucherRepository.findById(voucherId);
+        if (optionalVoucher.isPresent()) {
+            Voucher voucher = optionalVoucher.get();
+            if (voucher.getProductIds() != null && voucher.getProductIds().remove(productId)) {
+                voucherRepository.save(voucher);
+                return true;
+            }
+        }
+        return false;
+    }
 }

@@ -2,12 +2,14 @@ package dev.anhhoang.QTCSDLHD.controllers;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -108,5 +110,31 @@ public class VoucherController {
         }
         voucherService.deleteVoucher(id);
         return ResponseEntity.ok().build();
+    }
+
+    // Hủy áp dụng voucher cho 1 sản phẩm (xóa productId khỏi voucher)
+    @PatchMapping("/remove-product")
+    public ResponseEntity<?> removeProductFromVoucher(@RequestBody Map<String, String> payload, Principal principal) {
+        String voucherId = payload.get("voucherId");
+        String productId = payload.get("productId");
+        Optional<User> userOpt = userRepository.findByEmail(principal.getName());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(401).body("User not found");
+        }
+        User user = userOpt.get();
+        boolean isSeller = user.getRoles() != null && user.getRoles().contains(Role.ROLE_SELLER);
+        if (!isSeller || user.getSellerProfile() == null) {
+            return ResponseEntity.status(403).body("Only sellers can update vouchers");
+        }
+        Voucher voucher = voucherService.getVoucherById(voucherId);
+        if (voucher == null || !user.getSellerProfile().getShopId().equals(voucher.getShopId())) {
+            return ResponseEntity.status(403).body("Not allowed");
+        }
+        boolean result = voucherService.removeProductFromVoucher(voucherId, productId);
+        if (result) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.status(400).body("Remove product from voucher failed");
+        }
     }
 }
