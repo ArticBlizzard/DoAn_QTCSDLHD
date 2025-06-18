@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import SellerProduct from './SellerProduct';
+import VoucherManagement from './VoucherManagement';
 import './ShopManagement.css';
 
 function ShopManagement() {
@@ -15,10 +16,13 @@ function ShopManagement() {
   const [sortOrder, setSortOrder] = useState('asc');
   const [deleteProductId, setDeleteProductId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [vouchers, setVouchers] = useState([]);
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchVouchers();
   }, []);
 
   const fetchProducts = async () => {
@@ -47,6 +51,18 @@ function ShopManagement() {
       setCategories(data);
     } catch (err) {
       console.error('Failed to fetch categories', err);
+    }
+  };
+
+  const fetchVouchers = async () => {
+    const token = localStorage.getItem('token');
+    const res = await fetch('http://localhost:8080/api/vouchers/shop', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      setVouchers(await res.json());
+    } else {
+      setVouchers([]);
     }
   };
 
@@ -125,7 +141,45 @@ function ShopManagement() {
     }
   }
 
-  // Lưu ý: Đã bỏ cột Doanh số
+  // Lấy danh sách category duy nhất từ sản phẩm
+  const uniqueCategories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+
+  // Hàm xử lý thay đổi category
+  function handleCategoryChange(e) {
+    setSelectedCategory(e.target.value);
+  }
+
+  // Hàm lấy mã voucher áp dụng cho sản phẩm
+  function getVoucherCodeForProduct(productId) {
+    const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(productId));
+    return voucher ? voucher.code : 'Chưa áp dụng';
+  }
+
+  // Thêm hàm xử lý hủy áp dụng voucher
+  function handleRemoveVoucher(productId) {
+    const token = localStorage.getItem('token');
+    const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(productId));
+    if (!voucher) {
+      alert('Không tìm thấy voucher để hủy');
+      return;
+    }
+    fetch('http://localhost:8080/api/vouchers/remove-product', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ voucherId: voucher.id, productId })
+    })
+      .then(async res => {
+        const text = await res.text();
+        if (!res.ok) throw new Error(text || 'Hủy áp dụng voucher thất bại');
+        fetchVouchers();
+        alert('Hủy áp dụng voucher thành công');
+      })
+      .catch((err) => alert('Hủy áp dụng voucher thất bại: ' + err.message));
+  }
+
   return (
     <div className="product-management-page">
       <div className="sidebar">
@@ -136,7 +190,6 @@ function ShopManagement() {
       <div className="main-content">
         <div className="header-row">
           <div className="tabs">
-            {/* Đã bỏ tab 'Tất cả' và label 'Danh mục', chỉ giữ lại select */}
             <select
               id="category-select"
               className="category-select"
@@ -144,12 +197,15 @@ function ShopManagement() {
               onChange={e => setSelectedCategory(e.target.value)}
             >
               <option value="all">Tất cả</option>
-              {/* {uniqueCategories && uniqueCategories.filter(cat => cat && cat.trim() !== '').map(cat => (
+              {uniqueCategories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
-              ))} */}
+              ))}
             </select>
           </div>
-          <button className="add-btn" onClick={handleAdd}>+ Thêm 1 sản phẩm mới</button>
+          <div className="header-actions">
+            <button className="header-btn" onClick={() => setShowVoucherModal(true)}>Quản lý voucher</button>
+            <button className="add-btn" onClick={handleAdd}>+ Thêm 1 sản phẩm mới</button>
+          </div>
         </div>
         <div className="filter-row">
           <input
@@ -172,7 +228,7 @@ function ShopManagement() {
                 <th style={{fontSize: '15px', cursor: 'pointer'}} onClick={() => handleSort('stock')}>
                   Kho hàng <span style={{fontSize: '13px'}}>↕</span>
                 </th>
-                <th style={{fontSize: '15px'}}>Chất Lượng Nội Dung</th>
+                <th style={{fontSize: '15px'}}>Áp dụng voucher</th>
                 <th style={{fontSize: '15px'}}>Thao tác</th>
               </tr>
             </thead>
@@ -191,7 +247,26 @@ function ShopManagement() {
                   </td>
                   <td>{product.price?.toLocaleString('vi-VN')} VND</td>
                   <td>{product.stock}</td>
-                  <td>{product.quality || ''}</td>
+                  <td>
+                    {(() => {
+                      const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(product._id));
+                      if (voucher) {
+                        return (
+                          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                            <span>{voucher.code}</span>
+                            <button
+                              style={{marginTop: 4, fontSize: 13, color: '#e53935', background: 'none', border: '1px solid #e53935', borderRadius: 4, padding: '2px 8px', cursor: 'pointer'}}
+                              onClick={() => handleRemoveVoucher(product._id)}
+                            >
+                              Hủy áp dụng
+                            </button>
+                          </div>
+                        );
+                      } else {
+                        return <span>Chưa áp dụng</span>;
+                      }
+                    })()}
+                  </td>
                   <td>
                     <div className="action-btn-group">
                       <button className="action-btn" onClick={() => handleEdit(product)}>Cập nhật</button>
@@ -239,6 +314,7 @@ function ShopManagement() {
           </div>
         </div>
       )}
+      {showVoucherModal && <VoucherManagement onClose={() => setShowVoucherModal(false)} onVoucherApplied={fetchVouchers} />}
     </div>
   );
 }

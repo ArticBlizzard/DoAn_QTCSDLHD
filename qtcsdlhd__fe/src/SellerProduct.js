@@ -53,6 +53,7 @@ function SellerProduct({ product, onClose }) {
         });
       }
       if (!res.ok) throw new Error('Save failed');
+      alert(isEdit ? 'Chỉnh sửa sản phẩm thành công!' : 'Thêm sản phẩm mới thành công!');
       onClose(true);
     } catch (err) {
       alert('Lưu thất bại');
