@@ -380,11 +380,36 @@ function SignUp() {
 // --- Main App Component ---
 function App() {
   const [isLoggedInUser, setIsLoggedInUser] = useState(isLoggedIn());
-  const [currentView, setCurrentView] = useState('catalog'); // 'catalog', 'cart', 'detail', 'dashboard'
+  const [currentView, setCurrentView] = useState('catalog');
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [message, setMessage] = useState('');
-  const [messageTimeoutId, setMessageTimeoutId] = useState(null); // New state for timeout ID
+  const [messageTimeoutId, setMessageTimeoutId] = useState(null);
   const [cartItems, setCartItems] = useState([]);
+  const [userRoles, setUserRoles] = useState([]); // Thêm state lưu role
+
+  // Lấy role user sau khi đăng nhập
+  const fetchUserRoles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch('http://localhost:8080/api/users/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserRoles(data.roles || []);
+      } else {
+        setUserRoles([]);
+      }
+    } catch {
+      setUserRoles([]);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedInUser) fetchUserRoles();
+    else setUserRoles([]);
+  }, [isLoggedInUser]);
 
   const displayMessage = (msg, duration = 3000) => {
     // Clear any existing timeout
@@ -407,15 +432,17 @@ function App() {
 
   const handleLoginSuccess = () => {
     setIsLoggedInUser(true);
-    setCurrentView('catalog'); // Navigate to catalog after login
-    displayMessage('Đăng nhập thành công!'); // Use displayMessage
+    setCurrentView('catalog');
+    displayMessage('Đăng nhập thành công!');
+    fetchUserRoles(); // Lấy role sau khi đăng nhập
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsLoggedInUser(false);
-    setCurrentView('login'); // Navigate to login after logout
-    displayMessage('Bạn đã đăng xuất.'); // Use displayMessage
+    setCurrentView('login');
+    displayMessage('Bạn đã đăng xuất.');
+    setUserRoles([]); // Xóa role khi logout
   };
 
   const fetchCartProducts = async () => {
@@ -460,7 +487,7 @@ function App() {
       });
 
       if (response.ok) {
-        displayMessage('Sản phẩm đã được thêm vào giỏ hàng!'); // Use displayMessage
+        displayMessage('Sản phẩm đã được thêm vào giỏ hàng!');
         fetchCartProducts(); // Refresh cart after adding
         return true; // Indicate success
       } else {
@@ -487,7 +514,7 @@ function App() {
   };
 
   const handlePlaceOrder = (orderId) => {
-    displayMessage(`Đơn hàng của bạn đã được đặt thành công! Mã đơn hàng: ${orderId}`); // Use displayMessage
+    displayMessage(`Đơn hàng của bạn đã được đặt thành công! Mã đơn hàng: ${orderId}`);
     // Cart items are cleared by ShoppingCart component, so no need to clear again here.
     setCurrentView('catalog'); // Navigate to catalog after order
   };
@@ -503,7 +530,7 @@ function App() {
       });
       if (response.ok) {
         fetchCartProducts();
-        displayMessage('Số lượng sản phẩm đã được cập nhật.'); // Use displayMessage
+        displayMessage('Số lượng sản phẩm đã được cập nhật.');
       } else {
         const errorText = await response.text();
         displayMessage(`Error updating quantity: ${errorText}`, 5000);
@@ -524,7 +551,7 @@ function App() {
       });
       if (response.ok) {
         fetchCartProducts();
-        displayMessage('Sản phẩm đã được xóa khỏi giỏ hàng.'); // Use displayMessage
+        displayMessage('Sản phẩm đã được xóa khỏi giỏ hàng.');
       } else {
         const errorText = await response.text();
         displayMessage(`Error removing from cart: ${errorText}`, 5000);
@@ -591,7 +618,9 @@ function App() {
               <button onClick={() => setCurrentView('catalog')}>Sản phẩm</button>
               <button onClick={() => setCurrentView('cart')}>Giỏ hàng</button>
               <button onClick={() => setCurrentView('dashboard')}>Bảng điều khiển</button>
-              <button onClick={() => setCurrentView('shop-management')}>Quản lý sản phẩm</button>
+              {userRoles.includes('ROLE_SELLER') && (
+                <button onClick={() => setCurrentView('shop-management')}>Quản lý sản phẩm</button>
+              )}
               <button onClick={handleLogout} className="logout-btn">Đăng xuất</button>
             </>
           ) : (
