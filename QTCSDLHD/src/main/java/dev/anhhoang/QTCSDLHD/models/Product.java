@@ -2,7 +2,9 @@ package dev.anhhoang.QTCSDLHD.models;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -23,6 +25,8 @@ public class Product {
     private String shopid;
     @Field("shop_name")
     private String shopname;
+    @CreatedDate
     private LocalDateTime created_at;
+    @LastModifiedDate
     private LocalDateTime updated_at;
 }

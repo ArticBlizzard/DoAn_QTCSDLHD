@@ -298,6 +298,12 @@ function ShopManagement() {
             </div>
             <div style={{ fontSize: 15, marginBottom: 8 }}><b>Danh mục:</b> {detailProduct.category}</div>
             <div style={{ fontSize: 15, marginBottom: 16 }}><b>Mô tả:</b> {detailProduct.description}</div>
+            {/* Hiển thị thời gian tạo/cập nhật */}
+            {(detailProduct.updated_at || detailProduct.created_at) && (
+              <div style={{ fontSize: 14, color: '#888', marginBottom: 8 }}>
+                <b>Thời gian cập nhật:</b> {detailProduct.updated_at ? new Date(detailProduct.updated_at).toLocaleString('vi-VN') : new Date(detailProduct.created_at).toLocaleString('vi-VN')}
+              </div>
+            )}
             {/* Đã bỏ nút chỉnh sửa sản phẩm */}
           </div>
         </div>
