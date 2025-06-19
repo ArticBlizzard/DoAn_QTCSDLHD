@@ -32,11 +32,24 @@ public class VoucherService {
         return voucherRepository.findByCode(code);
     }
 
+    public List<Voucher> getApplicableVouchersForProduct(String productId, BigDecimal productPrice) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Voucher> productVouchers = voucherRepository.findByProductIdsContaining(productId);
+        // Filter out expired or not yet active vouchers, and check minOrderValue (if
+        // applicable)
+        return productVouchers.stream()
+                .filter(voucher -> ((voucher.getStartDate() == null || !now.isBefore(voucher.getStartDate())) &&
+                        (voucher.getEndDate() == null || !now.isAfter(voucher.getEndDate())) &&
+                        (voucher.getMinOrderValue() == null
+                                || productPrice.compareTo(voucher.getMinOrderValue()) >= 0)))
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public boolean isVoucherValid(Voucher voucher, BigDecimal orderTotal) {
         LocalDateTime now = LocalDateTime.now();
         return (voucher.getStartDate() == null || !now.isBefore(voucher.getStartDate())) &&
-               (voucher.getEndDate() == null || !now.isAfter(voucher.getEndDate())) &&
-               (orderTotal.compareTo(voucher.getMinOrderValue()) >= 0);
+                (voucher.getEndDate() == null || !now.isAfter(voucher.getEndDate())) &&
+                (orderTotal.compareTo(voucher.getMinOrderValue()) >= 0);
     }
 
     public BigDecimal calculateDiscount(Voucher voucher, BigDecimal orderTotal) {

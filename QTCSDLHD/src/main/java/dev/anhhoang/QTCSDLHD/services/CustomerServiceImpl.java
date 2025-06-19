@@ -5,11 +5,14 @@ import dev.anhhoang.QTCSDLHD.models.*;
 import dev.anhhoang.QTCSDLHD.repositories.CustomerRepository;
 import dev.anhhoang.QTCSDLHD.repositories.OrderRepository;
 import dev.anhhoang.QTCSDLHD.repositories.ProductRepository;
+import dev.anhhoang.QTCSDLHD.repositories.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +30,12 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private VoucherService voucherService;
 
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
@@ -98,6 +107,19 @@ public class CustomerServiceImpl implements CustomerService {
                             ProductResponse productResponse = new ProductResponse();
                             BeanUtils.copyProperties(product, productResponse);
                             productResponse.setQuantity(cartItem.getQuantity());
+                            // Explicitly set shop_name, with fallback to SellerProfile if product.shopname
+                            // is null
+                            if (product.getShopname() != null && !product.getShopname().isEmpty()) {
+                                productResponse.setShop_name(product.getShopname());
+                            } else if (product.getShopid() != null) {
+                                // Fetch the seller's user profile to get the shop name
+                                userRepository.findBySellerProfileShopId(product.getShopid()).ifPresent(sellerUser -> {
+                                    if (sellerUser.getSellerProfile() != null
+                                            && sellerUser.getSellerProfile().getShopName() != null) {
+                                        productResponse.setShop_name(sellerUser.getSellerProfile().getShopName());
+                                    }
+                                });
+                            }
                             return productResponse;
                         })
                         .orElse(null) // Handle case where product in cart is not found in DB (e.g., deleted product)
@@ -116,16 +138,47 @@ public class CustomerServiceImpl implements CustomerService {
             throw new RuntimeException("Cart is empty. Cannot create order.");
         }
 
+        // Get shipping address from request or user profile
+        String shippingAddress;
+        if (!StringUtils.hasText(request.getShippingAddress())) {
+            // If no address provided, get from user profile
+            User user = userRepository.findById(customerId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (user.getBuyerProfile() == null || user.getBuyerProfile().getPrimaryAddress() == null) {
+                throw new RuntimeException("No shipping address found in profile. Please provide a shipping address.");
+            }
+
+            Address primaryAddress = user.getBuyerProfile().getPrimaryAddress();
+            shippingAddress = String.format("%s, %s, %s, %s",
+                    primaryAddress.getStreet(),
+                    primaryAddress.getWard(),
+                    primaryAddress.getDistrict(),
+                    primaryAddress.getCity());
+        } else {
+            shippingAddress = request.getShippingAddress();
+        }
+
+        // Validate bank account for bank payment
+        if ("Thẻ ngân hàng".equals(request.getPaymentMethod())) {
+            if (request.getBankAccount() == null) {
+                throw new RuntimeException("Bank account information is required for bank payment.");
+            }
+        }
+
         Order order = new Order();
         order.setCustomer_id(customerId);
-        order.setShipping_address(request.getShippingAddress());
+        order.setFullName(request.getFullName());
+        order.setPhoneNumber(request.getPhoneNumber());
+        order.setShipping_address(shippingAddress);
         order.setPayment_method(request.getPaymentMethod());
-        order.setStatus("Pending"); // Initial status
+        order.setBankAccount(request.getBankAccount());
+        order.setStatus("Pending");
         order.setCreated_at(LocalDateTime.now());
         order.setUpdated_at(LocalDateTime.now());
 
         List<OrderItem> orderItems = new ArrayList<>();
-        double total = 0.0;
+        BigDecimal total = BigDecimal.ZERO;
 
         for (CartItemRequest cartItemRequest : request.getItems()) {
             Product product = productRepository.findById(cartItemRequest.getProductId())
@@ -138,10 +191,27 @@ public class CustomerServiceImpl implements CustomerService {
             OrderItem orderItem = new OrderItem();
             orderItem.setProduct_id(product.get_id());
             orderItem.setQuantity(cartItemRequest.getQuantity());
-            orderItem.setPrice(product.getPrice());
+
+            BigDecimal itemPrice = new BigDecimal(product.getPrice());
+            String voucherId = cartItemRequest.getVoucherId();
+
+            if (voucherId != null && !voucherId.isEmpty()) {
+                Voucher voucher = voucherService.getVoucherById(voucherId);
+                if (voucher != null && voucherService.isVoucherValid(voucher,
+                        itemPrice.multiply(BigDecimal.valueOf(cartItemRequest.getQuantity())))) {
+                    BigDecimal discount = voucherService.calculateDiscount(voucher,
+                            itemPrice.multiply(BigDecimal.valueOf(cartItemRequest.getQuantity())));
+                    itemPrice = itemPrice.multiply(BigDecimal.valueOf(cartItemRequest.getQuantity())).subtract(discount)
+                            .divide(BigDecimal.valueOf(cartItemRequest.getQuantity()), 2,
+                                    java.math.RoundingMode.HALF_UP); // Calculate discounted unit price
+                    orderItem.setVoucherId(voucherId);
+                }
+            }
+
+            orderItem.setPrice(itemPrice.doubleValue());
             orderItems.add(orderItem);
 
-            total += product.getPrice() * cartItemRequest.getQuantity();
+            total = total.add(itemPrice.multiply(BigDecimal.valueOf(cartItemRequest.getQuantity())));
 
             // Deduct stock
             product.setStock(product.getStock() - cartItemRequest.getQuantity());
@@ -149,7 +219,7 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         order.setItems(orderItems);
-        order.setTotal(total);
+        order.setTotal(total.doubleValue());
 
         Order savedOrder = orderRepository.save(order);
 

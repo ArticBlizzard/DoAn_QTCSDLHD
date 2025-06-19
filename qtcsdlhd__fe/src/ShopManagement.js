@@ -221,26 +221,26 @@ function ShopManagement() {
             <thead>
               <tr>
                 <th></th>
-                <th style={{fontSize: '15px'}}>Tên sản phẩm</th>
-                <th style={{fontSize: '15px', cursor: 'pointer'}} onClick={() => handleSort('price')}>
-                  Giá <span style={{fontSize: '13px'}}>↕</span>
+                <th style={{ fontSize: '15px' }}>Tên sản phẩm</th>
+                <th style={{ fontSize: '15px', cursor: 'pointer' }} onClick={() => handleSort('price')}>
+                  Giá <span style={{ fontSize: '13px' }}>↕</span>
                 </th>
-                <th style={{fontSize: '15px', cursor: 'pointer'}} onClick={() => handleSort('stock')}>
-                  Kho hàng <span style={{fontSize: '13px'}}>↕</span>
+                <th style={{ fontSize: '15px', cursor: 'pointer' }} onClick={() => handleSort('stock')}>
+                  Kho hàng <span style={{ fontSize: '13px' }}>↕</span>
                 </th>
-                <th style={{fontSize: '15px'}}>Áp dụng voucher</th>
-                <th style={{fontSize: '15px'}}>Thao tác</th>
+                <th style={{ fontSize: '15px' }}>Áp dụng voucher</th>
+                <th style={{ fontSize: '15px' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {sortedProducts.map(product => (
-                <tr key={product._id} style={{fontSize: '15px'}}>
+                <tr key={product._id} style={{ fontSize: '15px' }}>
                   <td><input type="checkbox" /></td>
                   <td>
-                    <div className="product-info">
-                      <img src={product.image_url} alt={product.name} className="product-img larger" />
+                    <div className="shop-product-info">
+                      <img src={product.image_url} alt={product.name} className="shop-product-img larger" />
                       <div>
-                        <div className="product-name" style={{fontSize: '18px', fontWeight: 700}}>{product.name}</div>
+                        <div className="shop-product-name" style={{ fontSize: '18px', fontWeight: 700 }}>{product.name}</div>
                         {/* Đã xóa SKU và ID */}
                       </div>
                     </div>
@@ -252,10 +252,10 @@ function ShopManagement() {
                       const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(product._id));
                       if (voucher) {
                         return (
-                          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                             <span>{voucher.code}</span>
                             <button
-                              style={{marginTop: 4, fontSize: 13, color: '#e53935', background: 'none', border: '1px solid #e53935', borderRadius: 4, padding: '2px 8px', cursor: 'pointer'}}
+                              style={{ marginTop: 4, fontSize: 13, color: '#e53935', background: 'none', border: '1px solid #e53935', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}
                               onClick={() => handleRemoveVoucher(product._id)}
                             >
                               Hủy áp dụng

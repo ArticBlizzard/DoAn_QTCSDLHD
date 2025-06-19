@@ -17,7 +17,7 @@ function BecomeSellerForm({ onSellerSuccess }) {
   const [shopName, setShopName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [businessType, setBusinessType] = useState('INDIVIDUAL');
-  
+
   // State cho địa chỉ (các trường đều trống)
   const [street, setStreet] = useState('');
   const [ward, setWard] = useState('');
@@ -71,7 +71,7 @@ function BecomeSellerForm({ onSellerSuccess }) {
         <div className="form-group"><label htmlFor="shopName">Tên cửa hàng</label><input type="text" id="shopName" value={shopName} onChange={e => setShopName(e.target.value)} required /></div>
         <div className="form-group"><label htmlFor="phoneNumber">Số điện thoại Shop</label><input type="text" id="phoneNumber" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} required /></div>
         <div className="form-group"><label htmlFor="businessType">Loại hình kinh doanh</label><select id="businessType" value={businessType} onChange={e => setBusinessType(e.target.value)}><option value="INDIVIDUAL">Cá nhân</option><option value="COMPANY">Doanh nghiệp</option></select></div>
-        
+
         {/* Address Info */}
         <h5>Địa chỉ lấy hàng</h5>
         <div className="form-group"><label htmlFor="street">Đường</label><input type="text" id="street" value={street} onChange={e => setStreet(e.target.value)} required /></div>
@@ -94,188 +94,188 @@ function BecomeSellerForm({ onSellerSuccess }) {
 
 
 function Dashboard({ onLogout }) {
-    const [userProfile, setUserProfile] = useState(null);
-    const [error, setError] = useState('');
-    const [showSellerForm, setShowSellerForm] = useState(false);
-    
-    const [isEditingBuyer, setIsEditingBuyer] = useState(false);
-    const [buyerEditData, setBuyerEditData] = useState({ phoneNumber: '', primaryAddress: { street: '', ward: '', district: '', city: '' }, bankAccount: { bankName: '', accountHolder: '', accountNumber: '' }});
-    
-    const [isEditingSeller, setIsEditingSeller] = useState(false);
-    const [sellerEditData, setSellerEditData] = useState({ shopName: '', phoneNumber: '', pickupAddress: { street: '', ward: '', district: '', city: '' }, bankAccount: { bankName: '', accountHolder: '', accountNumber: '' }});
+  const [userProfile, setUserProfile] = useState(null);
+  const [error, setError] = useState('');
+  const [showSellerForm, setShowSellerForm] = useState(false);
 
-    const prefillForms = (data) => {
-        // Kiểm tra an toàn cho buyerProfile
-        if (data.buyerProfile) {
-            setBuyerEditData({
-                phoneNumber: data.buyerProfile.phoneNumber || '',
-                primaryAddress: data.buyerProfile.primaryAddress || { street: '', ward: '', district: '', city: '' },
-                bankAccount: data.buyerProfile.bankAccount || { bankName: '', accountHolder: '', accountNumber: '' }
-            });
-        }
-        // --- SỬA LỖI TẠI ĐÂY ---
-        // Chỉ điền thông tin nếu sellerProfile tồn tại
-        if (data.sellerProfile) {
-            setSellerEditData({
-                shopName: data.sellerProfile.shopName || '',
-                phoneNumber: data.sellerProfile.phoneNumber || '',
-                // Sử dụng optional chaining (?.) để truy cập an toàn
-                pickupAddress: data.sellerProfile.pickupAddress || { street: '', ward: '', district: '', city: '' },
-                bankAccount: data.sellerProfile.bankAccount || { bankName: '', accountHolder: '', accountNumber: '' }
-            });
-        }
-    };
+  const [isEditingBuyer, setIsEditingBuyer] = useState(false);
+  const [buyerEditData, setBuyerEditData] = useState({ phoneNumber: '', primaryAddress: { street: '', ward: '', district: '', city: '' }, bankAccount: { bankName: '', accountHolder: '', accountNumber: '' } });
 
-    const fetchUserProfile = useCallback(async () => {
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) { setError('Không tìm thấy token.'); onLogout(); return; }
-            const response = await fetch('http://localhost:8080/api/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
-            if (response.ok) {
-                const data = await response.json();
-                setUserProfile(data);
-                setShowSellerForm(false);
-                prefillForms(data);
-            } else { setError('Không thể lấy thông tin. Vui lòng đăng nhập lại.'); onLogout(); }
-        } catch (err) { setError('Lỗi mạng khi lấy thông tin người dùng.'); }
-    }, [onLogout]);
+  const [isEditingSeller, setIsEditingSeller] = useState(false);
+  const [sellerEditData, setSellerEditData] = useState({ shopName: '', phoneNumber: '', pickupAddress: { street: '', ward: '', district: '', city: '' }, bankAccount: { bankName: '', accountHolder: '', accountNumber: '' } });
 
-    useEffect(() => { fetchUserProfile(); }, [fetchUserProfile]);
-    
-    const handleBuyerChange = (e, section) => {
-        const { name, value } = e.target;
-        if (section) {
-            setBuyerEditData(prev => ({...prev, [section]: { ...prev[section], [name]: value }}));
-        } else {
-            setBuyerEditData(prev => ({ ...prev, [name]: value }));
-        }
-    };
-    const handleSaveBuyerProfile = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            const response = await fetch('http://localhost:8080/api/users/update-buyer-profile', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(buyerEditData)
-            });
-            if(response.ok) { setIsEditingBuyer(false); fetchUserProfile(); }
-            else { setError(`Lỗi: ${await response.text()}`); }
-        } catch(err) { setError(`Lỗi mạng: ${err.message}`); }
-    };
-    
-    // Thêm các handler cho việc chỉnh sửa thông tin người bán
-    const handleSellerChange = (e, section) => {
-        const { name, value } = e.target;
-        if (section) {
-            setSellerEditData(prev => ({...prev, [section]: { ...prev[section], [name]: value }}));
-        } else {
-            setSellerEditData(prev => ({...prev, [name]: value }));
-        }
-    };
-    const handleSaveSellerProfile = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            const response = await fetch('http://localhost:8080/api/users/update-seller-profile', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(sellerEditData)
-            });
-            if (response.ok) { setIsEditingSeller(false); fetchUserProfile(); }
-            else { setError(`Lỗi: ${await response.text()}`); }
-        } catch (error) { setError(`Lỗi mạng khi lưu thông tin: ${error.message}`); }
-    };
+  const prefillForms = (data) => {
+    // Kiểm tra an toàn cho buyerProfile
+    if (data.buyerProfile) {
+      setBuyerEditData({
+        phoneNumber: data.buyerProfile.phoneNumber || '',
+        primaryAddress: data.buyerProfile.primaryAddress || { street: '', ward: '', district: '', city: '' },
+        bankAccount: data.buyerProfile.bankAccount || { bankName: '', accountHolder: '', accountNumber: '' }
+      });
+    }
+    // --- SỬA LỖI TẠI ĐÂY ---
+    // Chỉ điền thông tin nếu sellerProfile tồn tại
+    if (data.sellerProfile) {
+      setSellerEditData({
+        shopName: data.sellerProfile.shopName || '',
+        phoneNumber: data.sellerProfile.phoneNumber || '',
+        // Sử dụng optional chaining (?.) để truy cập an toàn
+        pickupAddress: data.sellerProfile.pickupAddress || { street: '', ward: '', district: '', city: '' },
+        bankAccount: data.sellerProfile.bankAccount || { bankName: '', accountHolder: '', accountNumber: '' }
+      });
+    }
+  };
 
-    if (error) return <div className="dashboard-container"><p className="message">{error}</p></div>;
-    if (!userProfile) return <div className="dashboard-container"><p>Đang tải...</p></div>;
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) { setError('Không tìm thấy token.'); onLogout(); return; }
+      const response = await fetch('http://localhost:8080/api/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (response.ok) {
+        const data = await response.json();
+        setUserProfile(data);
+        setShowSellerForm(false);
+        prefillForms(data);
+      } else { setError('Không thể lấy thông tin. Vui lòng đăng nhập lại.'); onLogout(); }
+    } catch (err) { setError('Lỗi mạng khi lấy thông tin người dùng.'); }
+  }, [onLogout]);
 
-    const isSeller = userProfile.roles.includes('ROLE_SELLER');
+  useEffect(() => { fetchUserProfile(); }, [fetchUserProfile]);
 
-    return (
-        <div className="dashboard-container">
-            <h2>Hồ sơ của bạn</h2>
-            <div className="profile-section">
-                <h4>Thông tin cá nhân</h4>
-                <p><strong>Họ và Tên:</strong> {userProfile.fullName}</p>
-                <p><strong>Email:</strong> {userProfile.email}</p>
-                <p><strong>Vai trò:</strong> {userProfile.roles.join(', ')}</p>
-            </div>
-            
-            <div className="profile-section">
-                <div className="section-header">
-                    <h4>Thông tin Người mua</h4>
-                    {!isEditingBuyer && <button onClick={() => setIsEditingBuyer(true)} className="edit-btn">Chỉnh sửa</button>}
-                </div>
-                {isEditingBuyer ? (
-                    <div className="edit-form">
-                        <div className="form-group"><label>Số điện thoại:</label><input type="text" name="phoneNumber" value={buyerEditData.phoneNumber} onChange={(e) => handleBuyerChange(e)} /></div>
-                        <h5>Địa chỉ chính</h5>
-                        <div className="form-group"><label>Đường:</label><input type="text" name="street" value={buyerEditData.primaryAddress.street} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
-                        <div className="form-group"><label>Phường/Xã:</label><input type="text" name="ward" value={buyerEditData.primaryAddress.ward} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
-                        <div className="form-group"><label>Quận/Huyện:</label><input type="text" name="district" value={buyerEditData.primaryAddress.district} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
-                        <div className="form-group"><label>Tỉnh/Thành phố:</label><input type="text" name="city" value={buyerEditData.primaryAddress.city} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
-                        <h5>Tài khoản ngân hàng</h5>
-                        <div className="form-group"><label>Tên ngân hàng:</label><input type="text" name="bankName" value={buyerEditData.bankAccount.bankName} onChange={(e) => handleBuyerChange(e, 'bankAccount')} /></div>
-                        <div className="form-group"><label>Chủ tài khoản:</label><input type="text" name="accountHolder" value={buyerEditData.bankAccount.accountHolder} onChange={(e) => handleBuyerChange(e, 'bankAccount')} /></div>
-                        <div className="form-group"><label>Số tài khoản:</label><input type="text" name="accountNumber" value={buyerEditData.bankAccount.accountNumber} onChange={(e) => handleBuyerChange(e, 'bankAccount')} /></div>
-                        <div className="form-actions">
-                            <button onClick={handleSaveBuyerProfile} className="submit-btn secondary-btn">Lưu</button>
-                            <button onClick={() => setIsEditingBuyer(false)} className="submit-btn logout-btn">Hủy</button>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <p><strong>Số điện thoại:</strong> {userProfile.buyerProfile?.phoneNumber || "Chưa cập nhật"}</p>
-                        {userProfile.buyerProfile?.primaryAddress && userProfile.buyerProfile.primaryAddress.street ? 
-                            <p><strong>Địa chỉ chính:</strong> {`${userProfile.buyerProfile.primaryAddress.street}, ${userProfile.buyerProfile.primaryAddress.ward}, ${userProfile.buyerProfile.primaryAddress.district}, ${userProfile.buyerProfile.primaryAddress.city}`}</p> : 
-                            <p><strong>Địa chỉ chính:</strong> Chưa cập nhật</p>}
-                        {userProfile.buyerProfile?.bankAccount && userProfile.buyerProfile.bankAccount.bankName ? 
-                            <p><strong>Ngân hàng:</strong> {`${userProfile.buyerProfile.bankAccount.bankName} - ${userProfile.buyerProfile.bankAccount.accountNumber}`}</p> : 
-                            <p><strong>Ngân hàng:</strong> Chưa cập nhật</p>}
-                    </>
-                )}
-            </div>
+  const handleBuyerChange = (e, section) => {
+    const { name, value } = e.target;
+    if (section) {
+      setBuyerEditData(prev => ({ ...prev, [section]: { ...prev[section], [name]: value } }));
+    } else {
+      setBuyerEditData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+  const handleSaveBuyerProfile = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('http://localhost:8080/api/users/update-buyer-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(buyerEditData)
+      });
+      if (response.ok) { setIsEditingBuyer(false); fetchUserProfile(); }
+      else { setError(`Lỗi: ${await response.text()}`); }
+    } catch (err) { setError(`Lỗi mạng: ${err.message}`); }
+  };
 
-            {isSeller && (
-                <div className="profile-section">
-                    <div className="section-header">
-                        <h3>Hồ sơ Người bán</h3>
-                        {!isEditingSeller && <button onClick={() => setIsEditingSeller(true)} className="edit-btn">Chỉnh sửa</button>}
-                    </div>
-                    {isEditingSeller ? (
-                         <div className="edit-form">
-                            <div className="form-group"><label>Tên cửa hàng:</label><input type="text" name="shopName" value={sellerEditData.shopName} onChange={(e) => handleSellerChange(e)} /></div>
-                            <div className="form-group"><label>Số điện thoại:</label><input type="text" name="phoneNumber" value={sellerEditData.phoneNumber} onChange={(e) => handleSellerChange(e)} /></div>
-                            <h5>Địa chỉ nhận hàng</h5>
-                            <div className="form-group"><label>Đường:</label><input type="text" name="street" value={sellerEditData.pickupAddress.street} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
-                            <div className="form-group"><label>Phường/Xã:</label><input type="text" name="ward" value={sellerEditData.pickupAddress.ward} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
-                            <div className="form-group"><label>Quận/Huyện:</label><input type="text" name="district" value={sellerEditData.pickupAddress.district} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
-                            <div className="form-group"><label>Tỉnh/Thành phố:</label><input type="text" name="city" value={sellerEditData.pickupAddress.city} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
-                            <h5>Tài khoản ngân hàng</h5>
-                            <div className="form-group"><label>Tên ngân hàng:</label><input type="text" name="bankName" value={sellerEditData.bankAccount.bankName} onChange={(e) => handleSellerChange(e, 'bankAccount')} /></div>
-                            <div className="form-group"><label>Chủ tài khoản:</label><input type="text" name="accountHolder" value={sellerEditData.bankAccount.accountHolder} onChange={(e) => handleSellerChange(e, 'bankAccount')} /></div>
-                            <div className="form-group"><label>Số tài khoản:</label><input type="text" name="accountNumber" value={sellerEditData.bankAccount.accountNumber} onChange={(e) => handleSellerChange(e, 'bankAccount')} /></div>
-                            <div className="form-actions">
-                                <button onClick={handleSaveSellerProfile} className="submit-btn secondary-btn">Lưu thay đổi</button>
-                                <button onClick={() => setIsEditingSeller(false)} className="submit-btn logout-btn">Hủy</button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div>
-                            <p><strong>ID Cửa hàng:</strong> {userProfile.sellerProfile?.shopId}</p>
-                            <p><strong>Tên cửa hàng:</strong> {userProfile.sellerProfile?.shopName}</p>
-                            <p><strong>Số điện thoại:</strong> {userProfile.sellerProfile?.phoneNumber}</p>
-                            {userProfile.sellerProfile?.pickupAddress && <p><strong>Địa chỉ nhận hàng:</strong> {`${userProfile.sellerProfile.pickupAddress.street}, ${userProfile.sellerProfile.pickupAddress.ward}, ${userProfile.sellerProfile.pickupAddress.district}, ${userProfile.sellerProfile.pickupAddress.city}`}</p>}
-                            {userProfile.sellerProfile?.bankAccount && <p><strong>Tài khoản ngân hàng:</strong> {`${userProfile.sellerProfile.bankAccount.bankName} - ${userProfile.sellerProfile.bankAccount.accountHolder}`}</p>}
-                        </div>
-                    )}
-                </div>
-            )}
+  // Thêm các handler cho việc chỉnh sửa thông tin người bán
+  const handleSellerChange = (e, section) => {
+    const { name, value } = e.target;
+    if (section) {
+      setSellerEditData(prev => ({ ...prev, [section]: { ...prev[section], [name]: value } }));
+    } else {
+      setSellerEditData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+  const handleSaveSellerProfile = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const response = await fetch('http://localhost:8080/api/users/update-seller-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(sellerEditData)
+      });
+      if (response.ok) { setIsEditingSeller(false); fetchUserProfile(); }
+      else { setError(`Lỗi: ${await response.text()}`); }
+    } catch (error) { setError(`Lỗi mạng khi lưu thông tin: ${error.message}`); }
+  };
 
-            {!isSeller && !showSellerForm && (<button onClick={() => setShowSellerForm(true)} className="submit-btn">Trở thành Người bán</button>)}
-            {showSellerForm && <BecomeSellerForm onSellerSuccess={fetchUserProfile} />}
-            <button onClick={onLogout} className="submit-btn logout-btn">Đăng xuất</button>
+  if (error) return <div className="dashboard-container"><p className="message">{error}</p></div>;
+  if (!userProfile) return <div className="dashboard-container"><p>Đang tải...</p></div>;
+
+  const isSeller = userProfile.roles.includes('ROLE_SELLER');
+
+  return (
+    <div className="dashboard-container">
+      <h2>Hồ sơ của bạn</h2>
+      <div className="profile-section">
+        <h4>Thông tin cá nhân</h4>
+        <p><strong>Họ và Tên:</strong> {userProfile.fullName}</p>
+        <p><strong>Email:</strong> {userProfile.email}</p>
+        <p><strong>Vai trò:</strong> {userProfile.roles.join(', ')}</p>
+      </div>
+
+      <div className="profile-section">
+        <div className="section-header">
+          <h4>Thông tin Người mua</h4>
+          {!isEditingBuyer && <button onClick={() => setIsEditingBuyer(true)} className="edit-btn">Chỉnh sửa</button>}
         </div>
-    );
+        {isEditingBuyer ? (
+          <div className="edit-form">
+            <div className="form-group"><label>Số điện thoại:</label><input type="text" name="phoneNumber" value={buyerEditData.phoneNumber} onChange={(e) => handleBuyerChange(e)} /></div>
+            <h5>Địa chỉ chính</h5>
+            <div className="form-group"><label>Đường:</label><input type="text" name="street" value={buyerEditData.primaryAddress.street} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
+            <div className="form-group"><label>Phường/Xã:</label><input type="text" name="ward" value={buyerEditData.primaryAddress.ward} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
+            <div className="form-group"><label>Quận/Huyện:</label><input type="text" name="district" value={buyerEditData.primaryAddress.district} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
+            <div className="form-group"><label>Tỉnh/Thành phố:</label><input type="text" name="city" value={buyerEditData.primaryAddress.city} onChange={(e) => handleBuyerChange(e, 'primaryAddress')} /></div>
+            <h5>Tài khoản ngân hàng</h5>
+            <div className="form-group"><label>Tên ngân hàng:</label><input type="text" name="bankName" value={buyerEditData.bankAccount.bankName} onChange={(e) => handleBuyerChange(e, 'bankAccount')} /></div>
+            <div className="form-group"><label>Chủ tài khoản:</label><input type="text" name="accountHolder" value={buyerEditData.bankAccount.accountHolder} onChange={(e) => handleBuyerChange(e, 'bankAccount')} /></div>
+            <div className="form-group"><label>Số tài khoản:</label><input type="text" name="accountNumber" value={buyerEditData.bankAccount.accountNumber} onChange={(e) => handleBuyerChange(e, 'bankAccount')} /></div>
+            <div className="form-actions">
+              <button onClick={handleSaveBuyerProfile} className="submit-btn secondary-btn">Lưu</button>
+              <button onClick={() => setIsEditingBuyer(false)} className="submit-btn logout-btn">Hủy</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p><strong>Số điện thoại:</strong> {userProfile.buyerProfile?.phoneNumber || "Chưa cập nhật"}</p>
+            {userProfile.buyerProfile?.primaryAddress && userProfile.buyerProfile.primaryAddress.street ?
+              <p><strong>Địa chỉ chính:</strong> {`${userProfile.buyerProfile.primaryAddress.street}, ${userProfile.buyerProfile.primaryAddress.ward}, ${userProfile.buyerProfile.primaryAddress.district}, ${userProfile.buyerProfile.primaryAddress.city}`}</p> :
+              <p><strong>Địa chỉ chính:</strong> Chưa cập nhật</p>}
+            {userProfile.buyerProfile?.bankAccount && userProfile.buyerProfile.bankAccount.bankName ?
+              <p><strong>Ngân hàng:</strong> {`${userProfile.buyerProfile.bankAccount.bankName} - ${userProfile.buyerProfile.bankAccount.accountNumber}`}</p> :
+              <p><strong>Ngân hàng:</strong> Chưa cập nhật</p>}
+          </>
+        )}
+      </div>
+
+      {isSeller && (
+        <div className="profile-section">
+          <div className="section-header">
+            <h3>Hồ sơ Người bán</h3>
+            {!isEditingSeller && <button onClick={() => setIsEditingSeller(true)} className="edit-btn">Chỉnh sửa</button>}
+          </div>
+          {isEditingSeller ? (
+            <div className="edit-form">
+              <div className="form-group"><label>Tên cửa hàng:</label><input type="text" name="shopName" value={sellerEditData.shopName} onChange={(e) => handleSellerChange(e)} /></div>
+              <div className="form-group"><label>Số điện thoại:</label><input type="text" name="phoneNumber" value={sellerEditData.phoneNumber} onChange={(e) => handleSellerChange(e)} /></div>
+              <h5>Địa chỉ nhận hàng</h5>
+              <div className="form-group"><label>Đường:</label><input type="text" name="street" value={sellerEditData.pickupAddress.street} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
+              <div className="form-group"><label>Phường/Xã:</label><input type="text" name="ward" value={sellerEditData.pickupAddress.ward} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
+              <div className="form-group"><label>Quận/Huyện:</label><input type="text" name="district" value={sellerEditData.pickupAddress.district} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
+              <div className="form-group"><label>Tỉnh/Thành phố:</label><input type="text" name="city" value={sellerEditData.pickupAddress.city} onChange={(e) => handleSellerChange(e, 'pickupAddress')} /></div>
+              <h5>Tài khoản ngân hàng</h5>
+              <div className="form-group"><label>Tên ngân hàng:</label><input type="text" name="bankName" value={sellerEditData.bankAccount.bankName} onChange={(e) => handleSellerChange(e, 'bankAccount')} /></div>
+              <div className="form-group"><label>Chủ tài khoản:</label><input type="text" name="accountHolder" value={sellerEditData.bankAccount.accountHolder} onChange={(e) => handleSellerChange(e, 'bankAccount')} /></div>
+              <div className="form-group"><label>Số tài khoản:</label><input type="text" name="accountNumber" value={sellerEditData.bankAccount.accountNumber} onChange={(e) => handleSellerChange(e, 'bankAccount')} /></div>
+              <div className="form-actions">
+                <button onClick={handleSaveSellerProfile} className="submit-btn secondary-btn">Lưu thay đổi</button>
+                <button onClick={() => setIsEditingSeller(false)} className="submit-btn logout-btn">Hủy</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p><strong>ID Cửa hàng:</strong> {userProfile.sellerProfile?.shopId}</p>
+              <p><strong>Tên cửa hàng:</strong> {userProfile.sellerProfile?.shopName}</p>
+              <p><strong>Số điện thoại:</strong> {userProfile.sellerProfile?.phoneNumber}</p>
+              {userProfile.sellerProfile?.pickupAddress && <p><strong>Địa chỉ nhận hàng:</strong> {`${userProfile.sellerProfile.pickupAddress.street}, ${userProfile.sellerProfile.pickupAddress.ward}, ${userProfile.sellerProfile.pickupAddress.district}, ${userProfile.sellerProfile.pickupAddress.city}`}</p>}
+              {userProfile.sellerProfile?.bankAccount && <p><strong>Tài khoản ngân hàng:</strong> {`${userProfile.sellerProfile.bankAccount.bankName} - ${userProfile.sellerProfile.bankAccount.accountHolder}`}</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isSeller && !showSellerForm && (<button onClick={() => setShowSellerForm(true)} className="submit-btn">Trở thành Người bán</button>)}
+      {showSellerForm && <BecomeSellerForm onSellerSuccess={fetchUserProfile} />}
+      <button onClick={onLogout} className="submit-btn logout-btn">Đăng xuất</button>
+    </div>
+  );
 }
 
 

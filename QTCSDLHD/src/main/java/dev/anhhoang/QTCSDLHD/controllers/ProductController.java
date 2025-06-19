@@ -15,10 +15,10 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
-    @GetMapping
-    public ResponseEntity<List<ProductResponse>> getAllProducts() {
+    @GetMapping("/all")
+    public ResponseEntity<List<ProductResponse>> getAllProducts(@RequestParam(required = false) String sort) {
         try {
-            List<ProductResponse> products = productService.getAllProducts();
+            List<ProductResponse> products = productService.getAllProducts(sort);
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null); // Or a more specific error response
@@ -38,12 +38,25 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ProductResponse>> searchProducts(@RequestParam String keyword) {
+    public ResponseEntity<List<ProductResponse>> searchProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String sort) {
         try {
-            List<ProductResponse> products = productService.searchProducts(keyword);
+            List<ProductResponse> products = productService.searchProducts(keyword, category, sort);
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(null); // Or a more specific error response
+        }
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<List<String>> getCategories() {
+        try {
+            List<String> categories = productService.getAllCategories();
+            return ResponseEntity.ok(categories);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
         }
     }
 }
