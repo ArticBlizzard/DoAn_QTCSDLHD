@@ -1,7 +1,10 @@
 .voucher-modal-bg {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.25);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.25);
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -57,7 +60,8 @@
   margin-bottom: 12px;
 }
 
-.voucher-table th, .voucher-table td {
+.voucher-table th,
+.voucher-table td {
   border: 1px solid #eee;
   padding: 8px 10px;
   text-align: center;
@@ -69,7 +73,10 @@
   font-weight: 700;
 }
 
-.edit-btn, .delete-btn, .save-btn, .action-btn {
+.edit-btn,
+.delete-btn,
+.save-btn,
+.action-btn {
   background: #fff;
   border: 1px solid #1976d2;
   color: #1976d2;
@@ -80,22 +87,28 @@
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
 }
-.edit-btn:hover, .save-btn:hover {
+
+.edit-btn:hover,
+.save-btn:hover {
   background: #1976d2;
   color: #fff;
 }
+
 .delete-btn {
   border-color: #e53935;
   color: #e53935;
 }
+
 .delete-btn:hover {
   background: #e53935;
   color: #fff;
 }
+
 .save-btn {
   border-color: #388e3c;
   color: #388e3c;
 }
+
 .save-btn:hover {
   background: #388e3c;
   color: #fff;
@@ -106,13 +119,16 @@
   flex-direction: column;
   gap: 14px;
 }
-.voucher-form .form-group {
+
+.voucher-form .voucher-form-group {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
 }
-.voucher-form input, .voucher-form select {
+
+.voucher-form .voucher-input,
+.voucher-form .voucher-select {
   padding: 6px 10px;
   border: 1px solid #ccc;
   border-radius: 4px;

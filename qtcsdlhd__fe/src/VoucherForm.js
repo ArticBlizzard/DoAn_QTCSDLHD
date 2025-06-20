@@ -27,28 +27,28 @@ function VoucherForm({ voucher, products, onClose, onSave }) {
     <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000 }}>
       <form className="voucher-form" onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 10, padding: 32, minWidth: 320, boxShadow: '0 2px 16px #0002', textAlign: 'center' }}>
         <h3>{voucher ? 'Chỉnh sửa voucher' : 'Thêm voucher mới'}</h3>
-        <div className="form-group">
+        <div className="voucher-form-group">
           <label>Mã voucher</label>
-          <input name="code" value={form.code} onChange={handleChange} required />
+          <input name="code" value={form.code} onChange={handleChange} required className="voucher-input" />
         </div>
-        <div className="form-group">
+        <div className="voucher-form-group">
           <label>Loại giảm giá</label>
-          <select name="discountType" value={form.discountType} onChange={handleChange}>
+          <select name="discountType" value={form.discountType} onChange={handleChange} className="voucher-select">
             <option value="PERCENTAGE">Phần trăm (%)</option>
             <option value="AMOUNT">Tiền mặt (VNĐ)</option>
           </select>
         </div>
-        <div className="form-group">
+        <div className="voucher-form-group">
           <label>Giá trị giảm</label>
-          <input name="discountValue" type="number" value={form.discountValue} onChange={handleChange} required />
+          <input name="discountValue" type="number" value={form.discountValue} onChange={handleChange} required className="voucher-input" />
         </div>
-        <div className="form-group">
+        <div className="voucher-form-group">
           <label>Ngày bắt đầu</label>
-          <input name="startDate" type="date" value={form.startDate} onChange={handleChange} required />
+          <input name="startDate" type="date" value={form.startDate} onChange={handleChange} required className="voucher-input" />
         </div>
-        <div className="form-group">
+        <div className="voucher-form-group">
           <label>Ngày kết thúc</label>
-          <input name="endDate" type="date" value={form.endDate} onChange={handleChange} required />
+          <input name="endDate" type="date" value={form.endDate} onChange={handleChange} required className="voucher-input" />
         </div>
         <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center', gap: 16 }}>
           <button className="save-btn" type="submit">Lưu</button>

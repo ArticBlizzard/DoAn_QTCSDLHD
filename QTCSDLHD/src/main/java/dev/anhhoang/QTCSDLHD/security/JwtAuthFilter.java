@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,7 +27,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private UserDetailsServiceImpl userDetailsService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
         // 1. Get the Authorization header from the request
@@ -53,12 +55,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             // 7. Validate the token
             if (jwtUtil.validateToken(jwt, userDetails)) {
-                // 8. If the token is valid, create an authentication token and set it in the security context
+                // 8. If the token is valid, create an authentication token and set it in the
+                // security context
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
-                        userDetails.getAuthorities()
-                );
+                        userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }

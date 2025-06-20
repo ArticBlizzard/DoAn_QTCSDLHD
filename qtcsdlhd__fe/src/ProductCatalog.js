@@ -5,13 +5,45 @@ function ProductCatalog({ onAddToCart, onProductView }) {
     const [products, setProducts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [message, setMessage] = useState('');
+    const [categories, setCategories] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [sortOption, setSortOption] = useState('');
 
-    const fetchProducts = async (term = '') => {
+    const fetchCategories = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/api/products/categories');
+            if (response.ok) {
+                const data = await response.json();
+                setCategories(data);
+            } else {
+                console.error('Error fetching categories:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Network error fetching categories:', error.message);
+        }
+    };
+
+    const fetchProducts = async (term = '', category = '', sort = '') => {
         try {
             let url = 'http://localhost:8080/api/products';
+            const params = new URLSearchParams();
+
             if (term) {
-                url = `http://localhost:8080/api/products/search?keyword=${term}`;
+                params.append('keyword', term);
             }
+            if (category) {
+                params.append('category', category);
+            }
+            if (sort) {
+                params.append('sort', sort);
+            }
+
+            if (params.toString()) {
+                url = `http://localhost:8080/api/products/search?${params.toString()}`;
+            } else {
+                url = 'http://localhost:8080/api/products/all';
+            }
+
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
@@ -27,25 +59,69 @@ function ProductCatalog({ onAddToCart, onProductView }) {
 
     useEffect(() => {
         fetchProducts();
+        fetchCategories();
     }, []);
 
-    const handleSearch = (e) => {
+    const handleSearchTermChange = (e) => {
+        setSearchTerm(e.target.value);
+    };
+
+    const handleSearchSubmit = (e) => {
         e.preventDefault();
-        fetchProducts(searchTerm);
+        fetchProducts(searchTerm, '', sortOption);
+        setShowSuggestions(false);
+    };
+
+    const handleCategoryClick = (categoryName) => {
+        setSearchTerm(categoryName);
+        fetchProducts('', categoryName, sortOption);
+        setShowSuggestions(false);
+    };
+
+    const handleSortChange = (e) => {
+        const newSortOption = e.target.value;
+        setSortOption(newSortOption);
+        fetchProducts(searchTerm, '', newSortOption);
     };
 
     return (
         <div className="product-catalog-container">
             <h2>Danh sách sản phẩm</h2>
-            <form onSubmit={handleSearch} className="search-bar">
+            <form onSubmit={handleSearchSubmit} className="search-bar">
                 <input
                     type="text"
                     placeholder="Tìm kiếm sản phẩm..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchTermChange}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
                 />
                 <button type="submit">Tìm kiếm</button>
             </form>
+
+            {showSuggestions && categories.length > 0 && (
+                <div className="category-suggestions">
+                    <h3>Danh mục gợi ý:</h3>
+                    <ul>
+                        {categories.slice(0, 6).map(category => (
+                            <li key={category} onClick={() => handleCategoryClick(category)}>
+                                {category}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            <div className="sort-options">
+                <label htmlFor="sort">Sắp xếp theo:</label>
+                <select id="sort" value={sortOption} onChange={handleSortChange}>
+                    <option value="">Mặc định</option>
+                    <option value="priceAsc">Giá: Thấp đến Cao</option>
+                    <option value="priceDesc">Giá: Cao đến Thấp</option>
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                </select>
+            </div>
 
             {message && <p className="message error">{message}</p>}
 
@@ -58,6 +134,9 @@ function ProductCatalog({ onAddToCart, onProductView }) {
                                 style={product.image_url ? { backgroundImage: `url(${product.image_url})` } : {}}
                             >
                                 {!product.image_url && <div className="no-image">Không có hình ảnh</div>}
+                                {product.stock === 0 && (
+                                    <img src="/soldout.png" alt="Sold Out" className="sold-out-overlay" />
+                                )}
                             </div>
                             <h3>{product.name}</h3>
                             <p className="price">{product.price.toLocaleString('vi-VN')} VND</p>
@@ -75,4 +154,4 @@ function ProductCatalog({ onAddToCart, onProductView }) {
     );
 }
 
-export default ProductCatalog; 
+export default ProductCatalog;

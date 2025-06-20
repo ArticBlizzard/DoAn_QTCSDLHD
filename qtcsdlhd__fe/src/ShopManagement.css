@@ -3,6 +3,7 @@
   min-height: 100vh;
   background: #f6f7fb;
 }
+
 .sidebar {
   width: 220px;
   background: #fff;
@@ -10,6 +11,7 @@
   padding: 32px 0 0 0;
   min-height: 100vh;
 }
+
 .sidebar-title {
   font-size: 20px;
   font-weight: 700;
@@ -17,6 +19,7 @@
   margin-bottom: 32px;
   padding-left: 32px;
 }
+
 .sidebar-item {
   padding: 16px 32px;
   font-size: 17px;
@@ -25,26 +28,32 @@
   border-left: 3px solid transparent;
   transition: background 0.2s;
 }
-.sidebar-item.active, .sidebar-item:hover {
+
+.sidebar-item.active,
+.sidebar-item:hover {
   background: #f2f6ff;
   color: #1976d2;
   border-left: 3px solid #1976d2;
 }
+
 .main-content {
   flex: 1;
   padding: 32px 40px;
 }
+
 .header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
 }
+
 .tabs {
   display: flex;
   align-items: center;
   gap: 0;
 }
+
 .tab {
   font-size: 16px;
   color: #888;
@@ -54,16 +63,19 @@
   transition: color 0.2s, border 0.2s;
   margin-right: 0;
 }
+
 .tab.active {
   color: #1976d2;
   border-bottom: 2px solid #1976d2;
   font-weight: 600;
 }
+
 .header-actions {
   display: flex;
   gap: 12px;
   align-items: center;
 }
+
 .header-btn {
   background: #fff;
   color: #444;
@@ -75,11 +87,13 @@
   cursor: pointer;
   transition: background 0.2s, border 0.2s;
 }
+
 .header-btn:hover {
   background: #f7fafd;
   border-color: #1976d2;
   color: #1976d2;
 }
+
 .add-btn {
   background: #ff5722;
   color: #fff;
@@ -91,14 +105,17 @@
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .add-btn:hover {
   background: #e64a19;
 }
+
 .filter-row {
   display: flex;
   gap: 12px;
   margin-bottom: 18px;
 }
+
 .search-input {
   flex: 1;
   padding: 8px 12px;
@@ -106,6 +123,7 @@
   border-radius: 4px;
   font-size: 15px;
 }
+
 .filter-btn {
   background: #1976d2;
   color: #fff;
@@ -115,6 +133,7 @@
   font-size: 15px;
   cursor: pointer;
 }
+
 .category-select {
   margin-left: 18px;
   padding: 7px 14px;
@@ -125,51 +144,68 @@
   color: #444;
   min-width: 160px;
 }
+
 .category-select:focus {
   outline: 1.5px solid #1976d2;
 }
+
 .product-table-wrapper {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 8px #0001;
   padding: 0 0 12px 0;
 }
+
 .product-table {
   width: 100%;
   border-collapse: collapse;
 }
-.product-table th, .product-table td {
+
+.product-table th,
+.product-table td {
   padding: 12px 10px;
   border-bottom: 1px solid #f0f0f0;
   text-align: left;
   font-size: 14px;
   vertical-align: middle;
 }
+
 .product-table th {
   color: #888;
   font-weight: 600;
   background: #f7fafd;
 }
-.product-table th:first-child, .product-table td:first-child {
+
+.product-table th:first-child,
+.product-table td:first-child {
   text-align: left;
 }
-.product-table th:nth-child(2), .product-table td:nth-child(2) {
+
+.product-table th:nth-child(2),
+.product-table td:nth-child(2) {
   text-align: left;
   min-width: 260px;
   max-width: 340px;
 }
-.product-table th:nth-child(3), .product-table td:nth-child(3),
-.product-table th:nth-child(4), .product-table td:nth-child(4),
-.product-table th:nth-child(5), .product-table td:nth-child(5),
-.product-table th:nth-child(6), .product-table td:nth-child(6) {
+
+.product-table th:nth-child(3),
+.product-table td:nth-child(3),
+.product-table th:nth-child(4),
+.product-table td:nth-child(4),
+.product-table th:nth-child(5),
+.product-table td:nth-child(5),
+.product-table th:nth-child(6),
+.product-table td:nth-child(6) {
   min-width: 90px;
   max-width: 120px;
 }
+
 .product-info {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .product-img {
   width: 56px;
   height: 56px;
@@ -178,26 +214,32 @@
   background: #f2f2f2;
   border: 1px solid #eee;
 }
+
 .product-img.larger {
   width: 72px;
   height: 72px;
 }
+
 .product-name {
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 2px;
   color: #222;
 }
-.product-sku, .product-id {
+
+.product-sku,
+.product-id {
   color: #888;
   font-size: 13px;
 }
+
 .action-btn-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
   align-items: flex-start;
 }
+
 .action-btn {
   font-size: 13px;
   padding: 6px 12px;
@@ -211,10 +253,12 @@
   width: 80px;
   text-align: left;
 }
+
 .action-btn.delete-btn {
   color: #e53935;
   background: #fbeaea;
 }
+
 .action-btn.delete-btn:hover {
   background: #ffeaea;
 }

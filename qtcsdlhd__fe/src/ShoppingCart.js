@@ -1,15 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import './ShoppingCart.css'; // Import the CSS file
+import React, { useState, useEffect, useRef } from 'react';
+import './ShoppingCart.css';
 
 function ShoppingCart({ onPlaceOrder }) {
     const [cartProducts, setCartProducts] = useState([]);
     const [message, setMessage] = useState('');
-    const [messageTimeoutId, setMessageTimeoutId] = useState(null); // New state for timeout ID
+    const [messageTimeoutId, setMessageTimeoutId] = useState(null);
     const [shippingAddress, setShippingAddress] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('Tiền mặt');
+    const [userAddresses, setUserAddresses] = useState([]);
+    const [selectedAddressIndex, setSelectedAddressIndex] = useState(-1);
+    const [fullName, setFullName] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [bankAccount, setBankAccount] = useState(null);
+    const [availableVouchers, setAvailableVouchers] = useState({});
+    const [selectedVouchers, setSelectedVouchers] = useState({});
+    const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const hasAutoSelected = useRef(false);
 
     const displayMessage = (msg, duration = 3000) => {
-        // Clear any existing timeout
         if (messageTimeoutId) {
             clearTimeout(messageTimeoutId);
         }
@@ -19,6 +27,41 @@ function ShoppingCart({ onPlaceOrder }) {
             setMessageTimeoutId(null);
         }, duration);
         setMessageTimeoutId(id);
+    };
+
+    const fetchUserProfile = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const response = await fetch('http://localhost:8080/api/users/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setFullName(data.fullName || '');
+
+                if (data.buyerProfile) {
+                    setPhoneNumber(data.buyerProfile.phoneNumber || '');
+                    setBankAccount(data.buyerProfile.bankAccount || null);
+
+                    if (data.buyerProfile.primaryAddress) {
+                        const primaryAddress = data.buyerProfile.primaryAddress;
+                        const formattedAddress = `${primaryAddress.street}, ${primaryAddress.ward}, ${primaryAddress.district}, ${primaryAddress.city}`;
+                        setShippingAddress(formattedAddress);
+                    }
+
+                    if (data.buyerProfile.addresses) {
+                        setUserAddresses(data.buyerProfile.addresses);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+        }
     };
 
     const fetchCartProducts = async () => {
@@ -37,7 +80,6 @@ function ShoppingCart({ onPlaceOrder }) {
             if (response.ok) {
                 const data = await response.json();
                 setCartProducts(data);
-                // No success message needed here, just update cart
             } else {
                 const errorText = await response.text();
                 displayMessage(`Error fetching cart: ${errorText}`, 5000);
@@ -47,9 +89,50 @@ function ShoppingCart({ onPlaceOrder }) {
         }
     };
 
+    const fetchVouchersForProduct = async (productId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:8080/api/vouchers/product/${productId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                const vouchers = await response.json();
+                setAvailableVouchers(prev => ({
+                    ...prev,
+                    [productId]: vouchers
+                }));
+            }
+        } catch (error) {
+            console.error('Error fetching vouchers:', error);
+        }
+    };
+
+    const handleVoucherSelect = (productId, voucherId) => {
+        setSelectedVouchers(prev => ({
+            ...prev,
+            [productId]: voucherId
+        }));
+    };
+
     useEffect(() => {
         fetchCartProducts();
+        fetchUserProfile();
     }, []);
+
+    useEffect(() => {
+        cartProducts.forEach(product => {
+            fetchVouchersForProduct(product._id);
+        });
+        setSelectedProductIds(prev => {
+            if (!hasAutoSelected.current && prev.length === 0 && cartProducts.length > 0) {
+                hasAutoSelected.current = true;
+                return cartProducts.map(p => p._id);
+            }
+            return prev.filter(id => cartProducts.some(p => p._id === id));
+        });
+    }, [cartProducts]);
 
     const handleUpdateQuantity = async (productId, quantity) => {
         try {
@@ -61,7 +144,7 @@ function ShoppingCart({ onPlaceOrder }) {
                 }
             });
             if (response.ok) {
-                fetchCartProducts(); // Refresh cart
+                fetchCartProducts();
                 displayMessage('Số lượng sản phẩm đã được cập nhật.');
             } else {
                 const errorText = await response.text();
@@ -84,7 +167,7 @@ function ShoppingCart({ onPlaceOrder }) {
                 body: JSON.stringify({ productId })
             });
             if (response.ok) {
-                fetchCartProducts(); // Refresh cart
+                fetchCartProducts();
                 displayMessage('Sản phẩm đã được xóa khỏi giỏ hàng.');
             } else {
                 const errorText = await response.text();
@@ -95,21 +178,52 @@ function ShoppingCart({ onPlaceOrder }) {
         }
     };
 
+    const calculateItemTotal = (item) => {
+        const price = parseFloat(item.price);
+        const quantity = parseInt(item.quantity);
+        let total = price * quantity;
+
+        // Apply voucher discount if selected
+        const selectedVoucher = selectedVouchers[item._id];
+        const productVouchers = availableVouchers[item._id] || [];
+        const voucher = productVouchers.find(v => v.id === selectedVoucher);
+
+        if (voucher) {
+            if (voucher.discountType === 'PERCENTAGE') {
+                total = total * (1 - voucher.discountValue / 100);
+            } else if (voucher.discountType === 'FIXED') {
+                total = total - voucher.discountValue;
+            }
+        }
+
+        return total;
+    };
+
+    const calculateTotal = () => {
+        return cartProducts.reduce((sum, item) => {
+            if (!selectedProductIds.includes(item._id)) return sum;
+            return sum + calculateItemTotal(item);
+        }, 0);
+    };
+
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
-        if (!shippingAddress || !paymentMethod) {
-            displayMessage("Vui lòng điền địa chỉ giao hàng và phương thức thanh toán.", 5000);
+        if (!shippingAddress || !paymentMethod || !fullName || !phoneNumber) {
+            displayMessage("Vui lòng điền đầy đủ thông tin giao hàng.", 5000);
             return;
         }
-
-        if (cartProducts.length === 0) {
-            displayMessage("Giỏ hàng của bạn đang trống.", 5000);
+        if (paymentMethod === 'Thẻ ngân hàng' && !bankAccount) {
+            displayMessage("Vui lòng cập nhật thông tin tài khoản ngân hàng trong hồ sơ.", 5000);
             return;
         }
-
-        const orderItems = cartProducts.map(item => ({
+        if (selectedProductIds.length === 0) {
+            displayMessage("Vui lòng chọn ít nhất một sản phẩm để đặt hàng.", 5000);
+            return;
+        }
+        const orderItems = cartProducts.filter(item => selectedProductIds.includes(item._id)).map(item => ({
             productId: item._id,
-            quantity: parseInt(item.quantity) // Ensure quantity is an integer
+            quantity: parseInt(item.quantity),
+            voucherId: selectedVouchers[item._id]
         }));
 
         try {
@@ -121,19 +235,22 @@ function ShoppingCart({ onPlaceOrder }) {
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
+                    fullName,
+                    phoneNumber,
                     shippingAddress,
                     paymentMethod,
+                    bankAccount: paymentMethod === 'Thẻ ngân hàng' ? bankAccount : null,
                     items: orderItems
                 })
             });
 
             if (response.ok) {
                 const orderId = await response.text();
-                // setMessage(`Đơn hàng đã được tạo thành công! Mã đơn hàng: ${orderId}`); // Removed this line
-                setCartProducts([]); // Clear cart after order
+                setCartProducts([]);
                 setShippingAddress('');
-                setPaymentMethod('');
-                onPlaceOrder(orderId); // Let parent component handle success message
+                setPaymentMethod('Tiền mặt');
+                setSelectedVouchers({});
+                onPlaceOrder(orderId);
             } else {
                 const errorText = await response.text();
                 displayMessage(`Lỗi tạo đơn hàng: ${errorText}`, 5000);
@@ -143,15 +260,20 @@ function ShoppingCart({ onPlaceOrder }) {
         }
     };
 
-    const calculateTotal = () => {
-        return cartProducts.reduce((sum, item) => {
-            const price = parseFloat(item.price);
-            const quantity = parseInt(item.quantity);
-            if (isNaN(price) || isNaN(quantity)) {
-                return sum; // Skip if either is not a number
-            }
-            return sum + (price * quantity);
-        }, 0);
+    const handleProductCheckbox = (productId) => {
+        setSelectedProductIds(prev =>
+            prev.includes(productId)
+                ? prev.filter(id => id !== productId)
+                : [...prev, productId]
+        );
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedProductIds(cartProducts.map(p => p._id));
+        } else {
+            setSelectedProductIds([]);
+        }
     };
 
     return (
@@ -161,8 +283,23 @@ function ShoppingCart({ onPlaceOrder }) {
 
             {cartProducts.length > 0 ? (
                 <div className="cart-list">
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                        <input
+                            type="checkbox"
+                            checked={selectedProductIds.length === cartProducts.length && cartProducts.length > 0}
+                            onChange={handleSelectAll}
+                            style={{ marginRight: 8 }}
+                        />
+                        <span>Chọn tất cả</span>
+                    </div>
                     {cartProducts.map(product => (
                         <div key={product._id} className="cart-item">
+                            <input
+                                type="checkbox"
+                                checked={selectedProductIds.includes(product._id)}
+                                onChange={() => handleProductCheckbox(product._id)}
+                                style={{ marginRight: 12, marginLeft: 4 }}
+                            />
                             <div
                                 className="product-thumbnail"
                                 style={product.image_url ? {
@@ -176,12 +313,54 @@ function ShoppingCart({ onPlaceOrder }) {
                             </div>
                             <div className="cart-item-details">
                                 <h3>{product.name}</h3>
+                                <p className="product-shop-name">Cửa hàng: {product.shop_name}</p>
                                 <p className="price">{product.price.toLocaleString('vi-VN')} VND</p>
+                                <p className="stock">Tồn kho: {product.stock}</p>
+                                <div className="actions">
+                                    <div className="voucher-section">
+                                        {(availableVouchers[product._id]?.length > 0) ? (
+                                            <select
+                                                value={selectedVouchers[product._id] || ''}
+                                                onChange={(e) => handleVoucherSelect(product._id, e.target.value)}
+                                                className="voucher-select"
+                                            >
+                                                <option value="">Chọn voucher</option>
+                                                {(availableVouchers[product._id] || []).map(voucher => (
+                                                    <option key={voucher.id} value={voucher.id}>
+                                                        {voucher.discountType === 'PERCENTAGE'
+                                                            ? `Giảm ${voucher.discountValue}%`
+                                                            : `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="no-voucher-message">
+                                                Không có voucher khả dụng
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                             <div className="quantity-control">
                                 <button onClick={() => handleUpdateQuantity(product._id, product.quantity - 1)}>-</button>
                                 <span>{product.quantity}</span>
                                 <button onClick={() => handleUpdateQuantity(product._id, product.quantity + 1)}>+</button>
+                            </div>
+                            <div className="price-info">
+                                {selectedVouchers[product._id] ? (
+                                    <>
+                                        <p className="original-price">
+                                            {(product.price * product.quantity).toLocaleString('vi-VN')} VND
+                                        </p>
+                                        <p className="discounted-price">
+                                            {calculateItemTotal(product).toLocaleString('vi-VN')} VND
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="normal-price">
+                                        {(product.price * product.quantity).toLocaleString('vi-VN')} VND
+                                    </p>
+                                )}
                             </div>
                             <button onClick={() => handleRemoveProduct(product._id)} className="remove-btn">Xóa</button>
                         </div>
@@ -190,19 +369,96 @@ function ShoppingCart({ onPlaceOrder }) {
 
                     <form onSubmit={handlePlaceOrder} className="order-form">
                         <h4>Thông tin đặt hàng</h4>
+
+                        <div className="form-group">
+                            <label htmlFor="fullName">Họ và tên người nhận</label>
+                            <input
+                                type="text"
+                                id="fullName"
+                                value={fullName}
+                                onChange={e => setFullName(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="phoneNumber">Số điện thoại</label>
+                            <input
+                                type="tel"
+                                id="phoneNumber"
+                                value={phoneNumber}
+                                onChange={e => setPhoneNumber(e.target.value)}
+                                required
+                            />
+                        </div>
+
                         <div className="form-group">
                             <label htmlFor="shippingAddress">Địa chỉ giao hàng</label>
-                            <input type="text" id="shippingAddress" value={shippingAddress} onChange={e => setShippingAddress(e.target.value)} required />
+                            {userAddresses.length > 0 && (
+                                <select
+                                    value={selectedAddressIndex}
+                                    onChange={(e) => {
+                                        const idx = parseInt(e.target.value);
+                                        setSelectedAddressIndex(idx);
+                                        if (idx === -1) {
+                                            setShippingAddress('');
+                                        } else {
+                                            const addr = userAddresses[idx];
+                                            setShippingAddress(`${addr.street}, ${addr.ward}, ${addr.district}, ${addr.city}`);
+                                        }
+                                    }}
+                                    className="address-select"
+                                >
+                                    <option value={-1}>Địa chỉ khác</option>
+                                    {userAddresses.map((addr, idx) => (
+                                        <option key={idx} value={idx}>
+                                            {`${addr.street}, ${addr.ward}, ${addr.district}, ${addr.city}`}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            <input
+                                type="text"
+                                id="shippingAddress"
+                                value={shippingAddress}
+                                onChange={e => {
+                                    setShippingAddress(e.target.value);
+                                    setSelectedAddressIndex(-1);
+                                }}
+                                required
+                                placeholder={selectedAddressIndex === -1 ? "Nhập địa chỉ giao hàng" : ""}
+                            />
                         </div>
+
                         <div className="form-group">
                             <label htmlFor="paymentMethod">Phương thức thanh toán</label>
-                            <input type="text" id="paymentMethod" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} required />
+                            <select
+                                id="paymentMethod"
+                                value={paymentMethod}
+                                onChange={e => setPaymentMethod(e.target.value)}
+                                required
+                            >
+                                <option value="Tiền mặt">Tiền mặt khi nhận hàng</option>
+                                <option value="Thẻ ngân hàng">Thanh toán bằng thẻ ngân hàng</option>
+                            </select>
                         </div>
-                        <button type="submit" className="submit-btn">Tạo đơn hàng</button>
+
+                        {paymentMethod === 'Thẻ ngân hàng' && bankAccount && (
+                            <div className="bank-info">
+                                <h5>Thông tin tài khoản ngân hàng</h5>
+                                <div className="bank-details">
+                                    <p><strong>Ngân hàng:</strong> {bankAccount.bankName}</p>
+                                    <p><strong>Số tài khoản:</strong> {bankAccount.accountNumber}</p>
+                                    <p><strong>Chủ tài khoản:</strong> {bankAccount.accountHolder}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <button type="submit" className="place-order-btn">Đặt hàng</button>
                     </form>
                 </div>
             ) : (
-                <p>Giỏ hàng của bạn trống.</p>
+                <p>Giỏ hàng trống</p>
             )}
         </div>
     );

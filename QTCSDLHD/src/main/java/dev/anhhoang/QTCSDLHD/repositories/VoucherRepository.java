@@ -11,6 +11,10 @@ import dev.anhhoang.QTCSDLHD.models.Voucher;
 @Repository
 public interface VoucherRepository extends MongoRepository<Voucher, String> {
     Optional<Voucher> findByCode(String code);
+
     List<Voucher> findByShopId(String shopId);
+
     List<Voucher> findByType(Voucher.VoucherType type);
+
+    List<Voucher> findByProductIdsContaining(String productId);
 }

@@ -22,6 +22,8 @@ import dev.anhhoang.QTCSDLHD.models.User;
 import dev.anhhoang.QTCSDLHD.models.Voucher;
 import dev.anhhoang.QTCSDLHD.repositories.UserRepository;
 import dev.anhhoang.QTCSDLHD.services.VoucherService;
+import dev.anhhoang.QTCSDLHD.repositories.ProductRepository;
+import dev.anhhoang.QTCSDLHD.models.Product;
 
 @RestController
 @RequestMapping("/api/vouchers")
@@ -30,6 +32,8 @@ public class VoucherController {
     private VoucherService voucherService;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private ProductRepository productRepository;
 
     // Tạo voucher chỉ cho seller, tự động lấy shopId từ sellerProfile
     @PostMapping
@@ -136,5 +140,17 @@ public class VoucherController {
         } else {
             return ResponseEntity.status(400).body("Remove product from voucher failed");
         }
+    }
+
+    // Lấy voucher áp dụng cho một sản phẩm cụ thể
+    @GetMapping("/product/{productId}")
+    public ResponseEntity<?> getVouchersForProduct(@PathVariable String productId) {
+        Optional<Product> productOpt = productRepository.findById(productId);
+        if (productOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Product not found");
+        }
+        Product product = productOpt.get();
+        return ResponseEntity.ok(voucherService.getApplicableVouchersForProduct(productId,
+                new java.math.BigDecimal(product.getPrice())));
     }
 }

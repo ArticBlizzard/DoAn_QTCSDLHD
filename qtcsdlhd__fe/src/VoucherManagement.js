@@ -146,12 +146,12 @@ function VoucherManagement({ onClose, onVoucherApplied }) {
                 <td>{v.code}</td>
                 <td>{v.discountType === 'PERCENTAGE' ? 'Phần trăm' : 'Tiền mặt'}</td>
                 <td>{v.discountType === 'PERCENTAGE' ? v.discountValue + '%' : v.discountValue + 'đ'}</td>
-                <td>{v.startDate ? v.startDate.substring(0,10) : ''}</td>
-                <td>{v.endDate ? v.endDate.substring(0,10) : ''}</td>
+                <td>{v.startDate ? v.startDate.substring(0, 10) : ''}</td>
+                <td>{v.endDate ? v.endDate.substring(0, 10) : ''}</td>
                 <td>
                   <button className="edit-btn" onClick={() => handleEdit(v)}>Sửa</button>
                   <button className="delete-btn" onClick={() => handleDeleteClick(v)}>Xóa</button>
-                  <button style={{marginLeft: 8}} onClick={() => {
+                  <button style={{ marginLeft: 8 }} onClick={() => {
                     setSelectedVoucher(v);
                     setSelectedProducts(v.productIds || []);
                   }}>Áp dụng</button>
@@ -162,12 +162,12 @@ function VoucherManagement({ onClose, onVoucherApplied }) {
         </table>
         {/* Danh sách sản phẩm áp dụng voucher */}
         {selectedVoucher && (
-          <div style={{marginTop: 24, background: '#f8fafc', padding: 16, borderRadius: 8}}>
-            <div style={{fontWeight: 600, marginBottom: 8}}>Chọn sản phẩm áp dụng cho voucher <span style={{color: '#1976d2'}}>{selectedVoucher.code}</span>:</div>
-            <div style={{maxHeight: 200, overflowY: 'auto', border: '1px solid #eee', borderRadius: 4, padding: 8}}>
+          <div style={{ marginTop: 24, background: '#f8fafc', padding: 16, borderRadius: 8 }}>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Chọn sản phẩm áp dụng cho voucher <span style={{ color: '#1976d2' }}>{selectedVoucher.code}</span>:</div>
+            <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #eee', borderRadius: 4, padding: 8 }}>
               {products.length === 0 && <div>Không có sản phẩm</div>}
               {products.map(p => (
-                <label key={p._id} style={{display: 'block', marginBottom: 4}}>
+                <label key={p._id} style={{ display: 'block', marginBottom: 4 }}>
                   <input
                     type="checkbox"
                     value={p._id}
@@ -184,8 +184,8 @@ function VoucherManagement({ onClose, onVoucherApplied }) {
                 </label>
               ))}
             </div>
-            <button className="save-btn" style={{marginTop: 12}} onClick={handleApplyVoucher}>Áp dụng</button>
-            <button style={{marginLeft: 8}} onClick={() => {setSelectedVoucher(null); setSelectedProducts([]);}}>Hủy</button>
+            <button className="save-btn" style={{ marginTop: 12 }} onClick={handleApplyVoucher}>Áp dụng</button>
+            <button style={{ marginLeft: 8 }} onClick={() => { setSelectedVoucher(null); setSelectedProducts([]); }}>Hủy</button>
           </div>
         )}
         {/* Modal xác nhận xóa voucher */}
