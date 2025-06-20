@@ -297,7 +297,7 @@ function ShopManagement() {
               {detailProduct.stock === 0 ? 'Hết hàng' : `Tồn kho: ${detailProduct.stock}`}
             </div>
             <div style={{ fontSize: 15, marginBottom: 8 }}><b>Danh mục:</b> {detailProduct.category}</div>
-            <div style={{ fontSize: 15, marginBottom: 16 }}><b>Mô tả:</b> {detailProduct.description}</div>
+            <div style={{ fontSize: 15, marginBottom: 16, maxHeight: 160, overflowY: 'auto', paddingRight: 8 }}><b>Mô tả:</b> {detailProduct.description}</div>
             {/* Hiển thị thời gian tạo/cập nhật */}
             {(detailProduct.updated_at || detailProduct.created_at) && (
               <div style={{ fontSize: 14, color: '#888', marginBottom: 8 }}>
