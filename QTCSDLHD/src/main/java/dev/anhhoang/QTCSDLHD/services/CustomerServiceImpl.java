@@ -6,6 +6,7 @@ import dev.anhhoang.QTCSDLHD.repositories.CustomerRepository;
 import dev.anhhoang.QTCSDLHD.repositories.OrderRepository;
 import dev.anhhoang.QTCSDLHD.repositories.ProductRepository;
 import dev.anhhoang.QTCSDLHD.repositories.UserRepository;
+import dev.anhhoang.QTCSDLHD.neo4j.services.RecommendationService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,9 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Autowired
     private VoucherService voucherService;
+
+    @Autowired
+    private RecommendationService recommendationService;
 
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
@@ -219,9 +223,19 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         order.setItems(orderItems);
-        order.setTotal(total.doubleValue());
+
+        if ("Thẻ ngân hàng".equals(request.getPaymentMethod())) {
+            order.setTotal(0.0);
+        } else {
+            order.setTotal(total.doubleValue());
+        }
 
         Order savedOrder = orderRepository.save(order);
+
+        // Tracking hành vi mua sản phẩm vào Neo4j
+        for (OrderItem item : orderItems) {
+            recommendationService.recordProductPurchase(customerId, item.getProduct_id(), item.getQuantity());
+        }
 
         // Remove only ordered items from cart after order creation
         List<String> orderedProductIds = request.getItems().stream()

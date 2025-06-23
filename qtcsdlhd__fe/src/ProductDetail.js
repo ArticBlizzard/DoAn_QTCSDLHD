@@ -1,35 +1,63 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import apiClient from './api/AxiosConfig'; // Import the configured Axios instance
 import './ProductDetail.css'; // Make sure to create this CSS file
 
-function ProductDetail({ productId, onBack, onAddToCart }) {
+function ProductDetail({ onAddToCart }) {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const productId = location.pathname.split('/').pop();
+
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [addingToCart, setAddingToCart] = useState(false);
+    const [similarProducts, setSimilarProducts] = useState([]);
+    const [loadingSimilar, setLoadingSimilar] = useState(false);
 
     useEffect(() => {
         const fetchProductDetail = async () => {
             try {
                 setLoading(true);
                 setError('');
-                const response = await fetch(`http://localhost:8080/api/products/${productId}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setProduct(data);
+                // Use apiClient instead of fetch
+                const response = await apiClient.get(`/api/products/${productId}`);
+                if (response.status === 200) {
+                    setProduct(response.data);
                 } else {
-                    const errorText = await response.text();
-                    setError(`Không thể tải thông tin sản phẩm: ${errorText}`);
+                    setError(`Không thể tải thông tin sản phẩm: ${response.statusText}`);
                 }
             } catch (err) {
-                setError(`Lỗi kết nối: ${err.message}`);
+                if (err.response) {
+                    setError(`Lỗi từ máy chủ: ${err.response.data.message || err.response.statusText}`);
+                } else if (err.request) {
+                    setError(`Không có phản hồi từ máy chủ. Vui lòng kiểm tra kết nối mạng.`);
+                } else {
+                    setError(`Lỗi kết nối: ${err.message}`);
+                }
             } finally {
                 setLoading(false);
             }
         };
 
+        const fetchSimilarProducts = async () => {
+            try {
+                setLoadingSimilar(true);
+                const response = await apiClient.get(`/api/recommendations/similar/${productId}`);
+                if (response.status === 200 && response.data.success) {
+                    setSimilarProducts(response.data.data || []);
+                }
+            } catch (err) {
+                console.error('Error fetching similar products:', err);
+            } finally {
+                setLoadingSimilar(false);
+            }
+        };
+
         if (productId) {
             fetchProductDetail();
+            fetchSimilarProducts();
         }
     }, [productId]);
 
@@ -51,10 +79,10 @@ function ProductDetail({ productId, onBack, onAddToCart }) {
             const success = await onAddToCart(product._id, quantity);
             if (success) {
                 alert(`Đã thêm ${quantity} sản phẩm ${product.name} vào giỏ hàng!`);
-                // Refresh product stock
-                const response = await fetch(`http://localhost:8080/api/products/${productId}`);
-                if (response.ok) {
-                    const updatedProduct = await response.json();
+                // Refresh product stock using apiClient
+                const response = await apiClient.get(`/api/products/${productId}`);
+                if (response.status === 200) {
+                    const updatedProduct = response.data;
                     setProduct(updatedProduct);
                 }
             }
@@ -63,6 +91,10 @@ function ProductDetail({ productId, onBack, onAddToCart }) {
         } finally {
             setAddingToCart(false);
         }
+    };
+
+    const handleBackClick = () => {
+        navigate(-1); // Go back to the previous page in history
     };
 
     if (loading) {
@@ -78,7 +110,7 @@ function ProductDetail({ productId, onBack, onAddToCart }) {
         return (
             <div className="product-detail-container error">
                 <p className="error-message">{error}</p>
-                <button onClick={onBack} className="back-button">← Quay lại danh sách sản phẩm</button>
+                <button onClick={handleBackClick} className="back-button">← Quay lại</button>
             </div>
         );
     }
@@ -87,14 +119,14 @@ function ProductDetail({ productId, onBack, onAddToCart }) {
         return (
             <div className="product-detail-container not-found">
                 <p>Không tìm thấy thông tin sản phẩm.</p>
-                <button onClick={onBack} className="back-button">← Quay lại danh sách sản phẩm</button>
+                <button onClick={handleBackClick} className="back-button">← Quay lại</button>
             </div>
         );
     }
 
     return (
         <div className="product-detail-container">
-            <button onClick={onBack} className="back-button">← Quay lại danh sách sản phẩm</button>
+            <button onClick={handleBackClick} className="back-button">← Quay lại</button>
             <div className="product-detail-content">
                 <div
                     className="product-images"
@@ -135,6 +167,44 @@ function ProductDetail({ productId, onBack, onAddToCart }) {
                         </button>
                     </div>
                 </div>
+            </div>
+
+            {/* Similar Products Section */}
+            <div className="similar-products-section">
+                <h3>Sản phẩm tương tự</h3>
+                {loadingSimilar ? (
+                    <div className="loading-similar">
+                        <div className="loading-spinner"></div>
+                        <p>Đang tải sản phẩm tương tự...</p>
+                    </div>
+                ) : similarProducts.length > 0 ? (
+                    <div className="similar-products-grid">
+                        {similarProducts.map(p => (
+                            <div key={p._id} className="product-item">
+                                <div
+                                    className="product-image-container"
+                                    style={p.image_url ? { backgroundImage: `url(${p.image_url})` } : {}}
+                                >
+                                    {!p.image_url && <div className="no-image">Không có hình ảnh</div>}
+                                    {p.stock === 0 && (
+                                        <img src="/soldout.png" alt="Sold Out" className="sold-out-overlay" />
+                                    )}
+                                </div>
+                                <h3>{p.name}</h3>
+                                <div className="product-meta">
+                                    <p className="stock">Tồn kho: {p.stock}</p>
+                                    <p className="sold-count">Đã bán: {p.purchaseCount || 0}</p>
+                                </div>
+                                <p className="price">{p.price.toLocaleString('vi-VN')} VND</p>
+                                <div className="actions">
+                                    <button onClick={() => navigate(`/product/${p._id}`)} className="secondary-btn">Xem chi tiết</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p>Không có sản phẩm tương tự.</p>
+                )}
             </div>
         </div>
     );

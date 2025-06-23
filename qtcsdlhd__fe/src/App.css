@@ -32,9 +32,9 @@ body {
 
 /* Header and Navigation */
 .App-header {
-  background-color: #ff6b35;
-  padding: 0.8rem 1.4rem;
-  /* Adjusted padding to make header taller */
+  background-color: #ee4d2d;
+  /* Shopee's primary orange */
+  padding: 1rem 2rem;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -42,48 +42,82 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.App-header .logo-link {
+  text-decoration: none;
+  color: white;
+}
+
 .App-header .logo {
-  /* Changed from h1 to div.logo in App.js */
   margin: 0;
-  font-size: 2.2rem;
-  /* Increased font size */
-  font-weight: 800;
-  /* Made it bolder */
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -1px;
+  text-shadow: none;
+  /* Removed text-shadow as per image */
 }
 
 .App-header nav {
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.5rem;
+  /* Tighter gap for buttons */
 }
 
-.App-header button {
-  background: none;
-  border: 2px solid white;
+/* Base style for all nav links and buttons */
+.App-header nav a,
+.App-header nav button {
   color: white;
-  padding: 0.5rem 1rem;
+  text-decoration: none;
+  padding: 0.6rem 1.2rem;
   border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: all 0.2s ease-in-out;
   cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  background-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  /* Prevent text wrapping */
+  margin: 0;
+  /* Reset any unwanted margins */
 }
 
-.App-header button:hover {
-  background: white;
-  color: #ff6b35;
+.App-header nav a:hover,
+.App-header nav button:hover {
+  opacity: 0.9;
 }
 
-.App-header .logout-btn {
-  background: #ff6b35;
-  border: 2px solid #d32f2f;
-  color: #d32f2f;
-  font-weight: bold;
+/* Style all functional links as white buttons */
+.App-header nav a {
+  background-color: white;
+  color: #ee4d2d;
+  font-weight: 600;
+  border-color: white;
 }
 
-.App-header .logout-btn:hover {
-  background: #ff8c5a;
-  border-color: #d32f2f;
-  color: #d32f2f;
+.App-header nav a:hover {
+  background-color: #f0f0f0;
+  border-color: #f0f0f0;
+  color: #ee4d2d;
+  /* Keep text color on hover */
+}
+
+/* Style the logout button to be grey */
+.App-header nav button.auth-btn {
+  background-color: #6c757d;
+  /* Standard grey */
+  color: white;
+  border-color: #6c757d;
+  font-weight: 600;
+}
+
+.App-header nav button.auth-btn:hover {
+  background-color: #5a6268;
+  /* Darker grey on hover */
+  border-color: #5a6268;
 }
 
 /* Main Content Area */

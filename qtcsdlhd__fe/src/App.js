@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import ProductCatalog from './ProductCatalog';
 import ShoppingCart from './ShoppingCart';
 import ProductDetail from './ProductDetail';
@@ -94,6 +95,7 @@ function BecomeSellerForm({ onSellerSuccess }) {
 
 
 function Dashboard({ onLogout }) {
+  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState(null);
   const [error, setError] = useState('');
   const [showSellerForm, setShowSellerForm] = useState(false);
@@ -379,40 +381,48 @@ function SignUp() {
 
 // --- Main App Component ---
 function App() {
-  const [isLoggedInUser, setIsLoggedInUser] = useState(isLoggedIn());
-  const [currentView, setCurrentView] = useState('catalog'); // 'catalog', 'cart', 'detail', 'dashboard'
-  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [isLoggedInState, setIsLoggedInState] = useState(isLoggedIn());
+  const [userId, setUserId] = useState(null);
+  const [cart, setCart] = useState([]);
   const [message, setMessage] = useState('');
-  const [messageTimeoutId, setMessageTimeoutId] = useState(null); // New state for timeout ID
-  const [cartItems, setCartItems] = useState([]);
-  const [userRoles, setUserRoles] = useState([]); // Thêm state lưu role
+  const [messageTimeoutId, setMessageTimeoutId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
-  // Lấy role user sau khi đăng nhập
-  const fetchUserRoles = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
-      const response = await fetch('http://localhost:8080/api/users/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      if (!token) { return; }
+      const response = await fetch('http://localhost:8080/api/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
       if (response.ok) {
         const data = await response.json();
-        setUserRoles(data.roles || []);
+        setUserProfile(data);
       } else {
-        setUserRoles([]);
+        setUserProfile(null);
       }
-    } catch {
-      setUserRoles([]);
+    } catch (err) {
+      setUserProfile(null);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (isLoggedInUser) fetchUserRoles();
-    else setUserRoles([]);
-  }, [isLoggedInUser]);
+    if (isLoggedInState) {
+      const token = localStorage.getItem('token');
+      try {
+        const storedUserId = JSON.parse(atob(token.split('.')[1])).sub;
+        setUserId(storedUserId);
+        fetchCartProducts();
+        fetchUserProfile();
+      } catch (e) {
+        console.error("Failed to parse token:", e);
+        handleLogout();
+      }
+    }
+  }, [isLoggedInState, fetchUserProfile]);
 
   const displayMessage = (msg, duration = 3000) => {
-    // Clear any existing timeout
     if (messageTimeoutId) {
       clearTimeout(messageTimeoutId);
     }
@@ -424,30 +434,22 @@ function App() {
     setMessageTimeoutId(id);
   };
 
-  useEffect(() => {
-    if (isLoggedInUser && currentView === 'cart') {
-      fetchCartProducts();
-    }
-  }, [isLoggedInUser, currentView]);
-
   const handleLoginSuccess = () => {
-    setIsLoggedInUser(true);
-    setCurrentView('catalog'); // Navigate to catalog after login
-    displayMessage('Đăng nhập thành công!'); // Use displayMessage
-    fetchUserRoles(); // Lấy role sau khi đăng nhập
+    setIsLoggedInState(true);
+    displayMessage('Đăng nhập thành công!');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    setIsLoggedInUser(false);
-    setCurrentView('login'); // Navigate to login after logout
-    displayMessage('Bạn đã đăng xuất.'); // Use displayMessage
-    setUserRoles([]); // Xóa role khi logout
+    setIsLoggedInState(false);
+    setUserId(null);
+    setCart([]);
+    setUserProfile(null);
+    // No need to navigate here, the routes will handle it
   };
 
   const fetchCartProducts = async () => {
-    if (!isLoggedInUser) return;
-
+    if (!isLoggedInState) return;
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:8080/api/customers/cart', {
@@ -455,10 +457,9 @@ function App() {
           'Authorization': `Bearer ${token}`
         }
       });
-
       if (response.ok) {
         const data = await response.json();
-        setCartItems(data);
+        setCart(data);
       } else {
         const errorText = await response.text();
         displayMessage(`Error fetching cart: ${errorText}`, 5000);
@@ -469,12 +470,10 @@ function App() {
   };
 
   const handleAddToCart = async (productId, quantity) => {
-    if (!isLoggedInUser) {
+    if (!isLoggedInState) {
       displayMessage('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.', 5000);
-      setCurrentView('login'); // Redirect to login if not logged in
-      return false; // Indicate failure
+      return false;
     }
-
     try {
       const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:8080/api/customers/cart/add', {
@@ -485,38 +484,19 @@ function App() {
         },
         body: JSON.stringify({ productId, quantity })
       });
-
       if (response.ok) {
-        displayMessage('Sản phẩm đã được thêm vào giỏ hàng!'); // Use displayMessage
-        fetchCartProducts(); // Refresh cart after adding
-        return true; // Indicate success
+        displayMessage('Sản phẩm đã được thêm vào giỏ hàng!');
+        fetchCartProducts();
+        return true;
       } else {
         const errorText = await response.text();
         displayMessage(`Lỗi thêm vào giỏ hàng: ${errorText}`, 5000);
-        return false; // Indicate failure
+        return false;
       }
     } catch (error) {
       displayMessage(`Lỗi mạng khi thêm vào giỏ hàng: ${error.message}`, 5000);
-      return false; // Indicate failure
+      return false;
     }
-  };
-
-  const handleProductView = (productId) => {
-    setSelectedProductId(productId);
-    setCurrentView('detail');
-    displayMessage('', 0); // Clear any existing messages instantly
-  };
-
-  const handleBackToCatalog = () => {
-    setSelectedProductId(null);
-    setCurrentView('catalog');
-    displayMessage('', 0); // Clear any existing messages instantly
-  };
-
-  const handlePlaceOrder = (orderId) => {
-    displayMessage(`Đơn hàng của bạn đã được đặt thành công! Mã đơn hàng: ${orderId}`); // Use displayMessage
-    // Cart items are cleared by ShoppingCart component, so no need to clear again here.
-    setCurrentView('catalog'); // Navigate to catalog after order
   };
 
   const handleUpdateCartQuantity = async (productId, quantity) => {
@@ -530,7 +510,7 @@ function App() {
       });
       if (response.ok) {
         fetchCartProducts();
-        displayMessage('Số lượng sản phẩm đã được cập nhật.'); // Use displayMessage
+        displayMessage('Số lượng sản phẩm đã được cập nhật.');
       } else {
         const errorText = await response.text();
         displayMessage(`Error updating quantity: ${errorText}`, 5000);
@@ -543,101 +523,84 @@ function App() {
   const handleRemoveFromCart = async (productId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/customers/cart/remove/${productId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        fetchCartProducts();
-        displayMessage('Sản phẩm đã được xóa khỏi giỏ hàng.'); // Use displayMessage
+      if (!token) {
+        displayMessage('Vui lòng đăng nhập để xóa sản phẩm.');
+        return;
+      }
+      // Use apiClient for the request
+      const response = await apiClient.post('/api/cart/remove', { productId });
+
+      if (response.status === 200) {
+        displayMessage('Đã xóa sản phẩm khỏi giỏ hàng.');
+        fetchCartProducts(); // Refresh cart
       } else {
-        const errorText = await response.text();
-        displayMessage(`Error removing from cart: ${errorText}`, 5000);
+        displayMessage(`Lỗi: ${response.data.message || 'Không thể xóa sản phẩm.'}`);
       }
     } catch (error) {
-      displayMessage(`Lỗi mạng khi xóa khỏi giỏ hàng: ${error.message}`, 5000);
+      const errorMessage = error.response?.data?.message || 'Lỗi mạng khi xóa sản phẩm.';
+      displayMessage(errorMessage);
     }
   };
 
-  let content;
-  if (!isLoggedInUser) {
-    switch (currentView) {
-      case 'login':
-        content = <Login onLoginSuccess={handleLoginSuccess} />;
-        break;
-      case 'signup':
-        content = <SignUp />;
-        break;
-      default:
-        content = <Login onLoginSuccess={handleLoginSuccess} />;
-    }
-  } else {
-    switch (currentView) {
-      case 'catalog':
-        content = <ProductCatalog onAddToCart={handleAddToCart} onProductView={handleProductView} />;
-        break;
-      case 'cart':
-        content = <ShoppingCart
-          cartItems={cartItems}
-          onUpdateQuantity={handleUpdateCartQuantity}
-          onRemoveFromCart={handleRemoveFromCart}
-          onPlaceOrder={handlePlaceOrder}
-        />;
-        break;
-      case 'detail':
-        content = selectedProductId ? (
-          <ProductDetail
-            productId={selectedProductId}
-            onBack={handleBackToCatalog}
-            onAddToCart={handleAddToCart}
-          />
-        ) : (
-          <div className="error-message">Không tìm thấy thông tin sản phẩm</div>
-        );
-        break;
-      case 'dashboard':
-        content = <Dashboard onLogout={handleLogout} />;
-        break;
-      case 'shop-management':
-        content = <ShopManagement />;
-        break;
-      default:
-        content = <ProductCatalog onAddToCart={handleAddToCart} onProductView={handleProductView} />;
-    }
-  }
+  const handlePlaceOrder = (orderId) => {
+    displayMessage(`Đơn hàng của bạn đã được đặt thành công! Mã đơn hàng: ${orderId}`);
+    // Potentially navigate to an order confirmation page or back to the catalog
+    // For now, it just displays a message.
+  };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <div className="logo">SHOPEE</div>
-        <nav>
-          {isLoggedInUser ? (
-            <>
-              <button onClick={() => setCurrentView('catalog')}>Sản phẩm</button>
-              <button onClick={() => setCurrentView('cart')}>Giỏ hàng</button>
-              <button onClick={() => setCurrentView('dashboard')}>Bảng điều khiển</button>
-              {userRoles.includes('ROLE_SELLER') && (
-                <button onClick={() => setCurrentView('shop-management')}>Quản lý sản phẩm</button>
-              )}
-              <button onClick={handleLogout} className="logout-btn">Đăng xuất</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setCurrentView('login')}>Đăng nhập</button>
-              <button onClick={() => setCurrentView('signup')}>Đăng ký</button>
-              <button onClick={() => setCurrentView('catalog')}>Sản phẩm</button>
-            </>
-          )}
-        </nav>
-      </header>
+    <Router>
+      <div className="App">
+        <header className="App-header">
+          <Link to="/" className="logo-link">
+            <div className="logo">SHOPEE</div>
+          </Link>
+          <nav>
+            <Link to="/">Trang chủ</Link>
+            {isLoggedInState && <Link to="/cart">Giỏ hàng ({cart.length})</Link>}
+            {isLoggedInState && <Link to="/dashboard">Hồ sơ</Link>}
+            {userProfile && userProfile.roles.includes('ROLE_SELLER') && (
+              <Link to="/shop-management">Quản lý Shop</Link>
+            )}
 
-      <main>
-        {message && <p className="message">{message}</p>}
-        {content}
-      </main>
-    </div>
+            {isLoggedInState ? (
+              <button onClick={handleLogout} className="auth-btn">Đăng xuất</button>
+            ) : (
+              <>
+                <Link to="/login" className="auth-btn">Đăng nhập</Link>
+                <Link to="/signup" className="auth-btn secondary-btn">Đăng ký</Link>
+              </>
+            )}
+          </nav>
+        </header>
+        <main>
+          {message && <p className="message">{message}</p>}
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ProductCatalog
+                  onAddToCart={handleAddToCart}
+                  userId={userId}
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  sortOption={sortOption}
+                  setSortOption={setSortOption}
+                  isSearching={isSearching}
+                  setIsSearching={setIsSearching}
+                />
+              }
+            />
+            <Route path="/product/:productId" element={isLoggedInState ? <ProductDetail onAddToCart={handleAddToCart} /> : <Navigate to="/login" />} />
+            <Route path="/cart" element={isLoggedInState ? <ShoppingCart cartItems={cart} onUpdateQuantity={handleUpdateCartQuantity} onRemoveItem={handleRemoveFromCart} onPlaceOrder={handlePlaceOrder} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard" element={isLoggedInState ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} />
+            <Route path="/shop-management" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <ShopManagement /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />
+            <Route path="/login" element={!isLoggedInState ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
+            <Route path="/signup" element={!isLoggedInState ? <SignUp /> : <Navigate to="/" />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 

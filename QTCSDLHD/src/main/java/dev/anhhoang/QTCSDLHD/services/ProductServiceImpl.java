@@ -6,9 +6,13 @@ import dev.anhhoang.QTCSDLHD.repositories.ProductRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -18,18 +22,21 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private Neo4jClient neo4jClient;
+
     @Override
     public List<ProductResponse> getAllProducts(String sort) {
         Sort sortOrder = createSortOrder(sort);
-        return productRepository.findAll(sortOrder).stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        List<Product> products = productRepository.findAll(sortOrder);
+        return convertToDtoWithPurchaseCount(products);
     }
 
     @Override
     public ProductResponse getProductById(String id) {
-        Optional<Product> product = productRepository.findById(id);
-        return product.map(this::convertToDto).orElseThrow(() -> new RuntimeException("Product not found"));
+        Optional<Product> productOpt = productRepository.findById(id);
+        Product product = productOpt.orElseThrow(() -> new RuntimeException("Product not found"));
+        return convertToDtoWithPurchaseCount(List.of(product)).get(0);
     }
 
     @Override
@@ -48,9 +55,7 @@ public class ProductServiceImpl implements ProductService {
             products = productRepository.findAll(sortOrder);
         }
 
-        return products.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+        return convertToDtoWithPurchaseCount(products);
     }
 
     @Override
@@ -62,11 +67,38 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
     }
 
-    private ProductResponse convertToDto(Product product) {
-        ProductResponse productResponse = new ProductResponse();
-        BeanUtils.copyProperties(product, productResponse);
-        productResponse.setShop_name(product.getShopname());
-        return productResponse;
+    private List<ProductResponse> convertToDtoWithPurchaseCount(List<Product> products) {
+        if (products.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> productIds = products.stream().map(Product::get_id).collect(Collectors.toList());
+
+        String purchaseCountCypher = """
+                    UNWIND $ids AS pid
+                    MATCH (p:Product {id: pid})
+                    OPTIONAL MATCH (u:User)-[b:BOUGHT]->(p)
+                    RETURN pid, COALESCE(SUM(b.quantity), 0) AS purchaseCount
+                """;
+
+        Collection<Map<String, Object>> purchaseCountsResult = neo4jClient.query(purchaseCountCypher)
+                .bindAll(Map.of("ids", productIds))
+                .fetch().all();
+
+        Map<String, Integer> purchaseCountMap = new HashMap<>();
+        for (var row : purchaseCountsResult) {
+            purchaseCountMap.put((String) row.get("pid"), ((Number) row.get("purchaseCount")).intValue());
+        }
+
+        return products.stream().map(product -> {
+            ProductResponse dto = new ProductResponse();
+            BeanUtils.copyProperties(product, dto);
+            dto.setShop_name(product.getShopname());
+            dto.setPurchaseCount(purchaseCountMap.getOrDefault(product.get_id(), 0));
+            // Note: viewed status is not available here, it's specific to a user context
+            dto.setViewed(false);
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     private Sort createSortOrder(String sort) {

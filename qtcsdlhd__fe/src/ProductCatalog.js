@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ProductCatalog.css';
 
-function ProductCatalog({ onAddToCart, onProductView }) {
+function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOption, setSortOption, isSearching, setIsSearching }) {
+    const navigate = useNavigate();
     const [products, setProducts] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
     const [message, setMessage] = useState('');
     const [categories, setCategories] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [sortOption, setSortOption] = useState('');
 
     const fetchCategories = async () => {
         try {
@@ -23,57 +23,91 @@ function ProductCatalog({ onAddToCart, onProductView }) {
         }
     };
 
-    const fetchProducts = async (term = '', category = '', sort = '') => {
+    const fetchProducts = async (term = '', category = '', sort = '', forRecommendation = false) => {
         try {
-            let url = 'http://localhost:8080/api/products';
-            const params = new URLSearchParams();
+            let url;
+            let currentProducts = [];
 
-            if (term) {
-                params.append('keyword', term);
-            }
-            if (category) {
-                params.append('category', category);
-            }
-            if (sort) {
-                params.append('sort', sort);
-            }
-
-            if (params.toString()) {
-                url = `http://localhost:8080/api/products/search?${params.toString()}`;
+            if (forRecommendation && !term && !category && !sort) {
+                if (!userId) {
+                    setMessage('User ID not available for recommendations.');
+                    setProducts([]);
+                    return;
+                }
+                url = `http://localhost:8080/api/recommendations`;
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    currentProducts = data.data || [];
+                    setMessage('');
+                } else {
+                    setMessage(`Error fetching recommendations: ${response.statusText}`);
+                }
             } else {
-                url = 'http://localhost:8080/api/products/all';
-            }
+                const params = new URLSearchParams();
+                if (term) {
+                    params.append('keyword', term);
+                }
+                if (category) {
+                    params.append('category', category);
+                }
+                if (sort) {
+                    params.append('sort', sort);
+                }
 
-            const response = await fetch(url);
-            if (response.ok) {
-                const data = await response.json();
-                setProducts(data);
-                setMessage('');
-            } else {
-                setMessage(`Error fetching products: ${response.statusText}`);
+                if (params.toString()) {
+                    url = `http://localhost:8080/api/products/search?${params.toString()}`;
+                } else {
+                    url = 'http://localhost:8080/api/products/all';
+                }
+
+                const response = await fetch(url);
+                if (response.ok) {
+                    currentProducts = await response.json();
+                    setMessage('');
+                } else {
+                    setMessage(`Error fetching products: ${response.statusText}`);
+                }
             }
+            setProducts(currentProducts);
+
         } catch (error) {
-            setMessage(`Network error fetching products: ${error.message}`);
+            setMessage(`Network error fetching products/recommendations: ${error.message}`);
         }
     };
 
     useEffect(() => {
-        fetchProducts();
+        if (isSearching) {
+            fetchProducts(searchTerm, '', sortOption, false);
+        } else {
+            fetchProducts('', '', sortOption, !!userId);
+        }
         fetchCategories();
-    }, []);
+        // eslint-disable-next-line
+    }, [userId, searchTerm, sortOption, isSearching]);
 
     const handleSearchTermChange = (e) => {
         setSearchTerm(e.target.value);
+        setIsSearching(true);
     };
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
-        fetchProducts(searchTerm, '', sortOption);
+        if (searchTerm.trim() === '') {
+            setIsSearching(false);
+            fetchProducts('', '', '', true);
+        } else {
+            setIsSearching(true);
+            fetchProducts(searchTerm, '', sortOption);
+        }
         setShowSuggestions(false);
     };
 
     const handleCategoryClick = (categoryName) => {
         setSearchTerm(categoryName);
+        setIsSearching(true);
         fetchProducts('', categoryName, sortOption);
         setShowSuggestions(false);
     };
@@ -81,12 +115,20 @@ function ProductCatalog({ onAddToCart, onProductView }) {
     const handleSortChange = (e) => {
         const newSortOption = e.target.value;
         setSortOption(newSortOption);
+        setIsSearching(true);
         fetchProducts(searchTerm, '', newSortOption);
     };
 
     return (
         <div className="product-catalog-container">
-            <h2>Danh sách sản phẩm</h2>
+            <h2>
+                {isSearching
+                    ? "Kết quả tìm kiếm"
+                    : userId
+                        ? "Sản phẩm gợi ý cho bạn"
+                        : "Tất cả sản phẩm"
+                }
+            </h2>
             <form onSubmit={handleSearchSubmit} className="search-bar">
                 <input
                     type="text"
@@ -99,7 +141,7 @@ function ProductCatalog({ onAddToCart, onProductView }) {
                 <button type="submit">Tìm kiếm</button>
             </form>
 
-            {showSuggestions && categories.length > 0 && (
+            {isSearching && showSuggestions && categories.length > 0 && (
                 <div className="category-suggestions">
                     <h3>Danh mục gợi ý:</h3>
                     <ul>
@@ -112,16 +154,18 @@ function ProductCatalog({ onAddToCart, onProductView }) {
                 </div>
             )}
 
-            <div className="sort-options">
-                <label htmlFor="sort">Sắp xếp theo:</label>
-                <select id="sort" value={sortOption} onChange={handleSortChange}>
-                    <option value="">Mặc định</option>
-                    <option value="priceAsc">Giá: Thấp đến Cao</option>
-                    <option value="priceDesc">Giá: Cao đến Thấp</option>
-                    <option value="newest">Mới nhất</option>
-                    <option value="oldest">Cũ nhất</option>
-                </select>
-            </div>
+            {isSearching && (
+                <div className="sort-options">
+                    <label htmlFor="sort">Sắp xếp theo:</label>
+                    <select id="sort" value={sortOption} onChange={handleSortChange}>
+                        <option value="">Mặc định</option>
+                        <option value="priceAsc">Giá: Thấp đến Cao</option>
+                        <option value="priceDesc">Giá: Cao đến Thấp</option>
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                    </select>
+                </div>
+            )}
 
             {message && <p className="message error">{message}</p>}
 
@@ -139,10 +183,13 @@ function ProductCatalog({ onAddToCart, onProductView }) {
                                 )}
                             </div>
                             <h3>{product.name}</h3>
+                            <div className="product-meta">
+                                <p className="stock">Tồn kho: {product.stock}</p>
+                                <p className="sold-count">Đã bán: {product.purchaseCount || 0}</p>
+                            </div>
                             <p className="price">{product.price.toLocaleString('vi-VN')} VND</p>
-                            <p className="stock">Tồn kho: {product.stock}</p>
                             <div className="actions">
-                                <button onClick={() => onProductView(product._id)} className="secondary-btn">Xem chi tiết</button>
+                                <button onClick={() => navigate(`/product/${product._id}`)} className="secondary-btn">Xem chi tiết</button>
                             </div>
                         </div>
                     ))
