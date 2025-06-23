@@ -35,6 +35,7 @@ public class CustomerController {
         try {
             String customerId = getCustomerId(principal);
             customerService.addProductToCart(customerId, request);
+            //redis.set()
             return ResponseEntity.ok("Product added to cart successfully!");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

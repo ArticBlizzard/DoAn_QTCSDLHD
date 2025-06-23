@@ -19,7 +19,6 @@ public class RedisConfig {
         config.setPassword("gfIR0OPV7ndUviFO3epkJT5fPl69cpyO");
 
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .useSsl()
                 .build();
 
         return new LettuceConnectionFactory(config, clientConfig);

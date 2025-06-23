@@ -12,8 +12,7 @@ public class TestRedisController {
 
     @GetMapping("/test-redis")
     public String testRedis() {
-        System.out.println("hello=========================");
-        redisTemplate.opsForValue().set("foo", "bar");
-        return (String) redisTemplate.opsForValue().get("foo");
+        redisTemplate.opsForValue().set("aokhoac", "mauhong");
+        return (String) redisTemplate.opsForValue().get("aokhoac");
     }
 }

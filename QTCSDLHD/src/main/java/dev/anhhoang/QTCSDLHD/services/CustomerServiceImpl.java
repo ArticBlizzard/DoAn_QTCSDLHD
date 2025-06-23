@@ -9,6 +9,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.redis.core.RedisTemplate;
+
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,6 +29,13 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+
+    private String getCartKey(String customerId) {
+    return "cart:" + customerId;
+    }
 
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
@@ -49,6 +58,10 @@ public class CustomerServiceImpl implements CustomerService {
         }
         customer.setUpdated_at(LocalDateTime.now());
         customerRepository.save(customer);
+
+        // Cập nhật Redis
+        redisTemplate.opsForValue().set(getCartKey(customerId), customer.getCart());
+
         return convertToUserProfileResponse(customer);
     }
 
@@ -64,6 +77,10 @@ public class CustomerServiceImpl implements CustomerService {
         }
         customer.setUpdated_at(LocalDateTime.now());
         customerRepository.save(customer);
+
+        // Cập nhật cache
+        redisTemplate.opsForValue().set(getCartKey(customerId), customer.getCart());
+
         return convertToUserProfileResponse(customer);
     }
 
@@ -84,15 +101,31 @@ public class CustomerServiceImpl implements CustomerService {
         }
         customer.setUpdated_at(LocalDateTime.now());
         customerRepository.save(customer);
+
+        // Cập nhật cache
+        redisTemplate.opsForValue().set(getCartKey(customerId), customer.getCart());
+
         return convertToUserProfileResponse(customer);
     }
 
-    @Override
+   @Override
     public List<ProductResponse> getCartProducts(String customerId) {
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        List<CartItem> cart;
 
-        return customer.getCart().stream()
+        // ⚡ Lấy từ Redis
+        Object cached = redisTemplate.opsForValue().get(getCartKey(customerId));
+        if (cached != null) {
+            cart = (List<CartItem>) cached;
+        } else {
+            // 🐢 Lấy từ MongoDB nếu Redis không có
+            Customer customer = customerRepository.findById(customerId)
+                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+            cart = customer.getCart();
+            // Cache lại
+            redisTemplate.opsForValue().set(getCartKey(customerId), cart);
+        }
+
+        return cart.stream()
                 .map(cartItem -> productRepository.findById(cartItem.getProduct_id())
                         .map(product -> {
                             ProductResponse productResponse = new ProductResponse();
@@ -100,11 +133,11 @@ public class CustomerServiceImpl implements CustomerService {
                             productResponse.setQuantity(cartItem.getQuantity());
                             return productResponse;
                         })
-                        .orElse(null) // Handle case where product in cart is not found in DB (e.g., deleted product)
-                )
+                        .orElse(null))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
     }
+
 
     @Override
     @Transactional
@@ -159,8 +192,12 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setUpdated_at(LocalDateTime.now());
         customerRepository.save(customer);
 
+        // Xoá cache giỏ hàng trên Redis
+        redisTemplate.delete(getCartKey(customerId));
+
         return savedOrder.get_id();
     }
+
 
     // Assuming UserProfileResponse is an existing DTO for user information
     private UserProfileResponse convertToUserProfileResponse(Customer customer) {
