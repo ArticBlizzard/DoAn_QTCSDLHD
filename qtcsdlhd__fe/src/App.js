@@ -5,6 +5,7 @@ import ShoppingCart from './ShoppingCart';
 import ProductDetail from './ProductDetail';
 import ShopManagement from './ShopManagement';
 import './App.css'; // Make sure App.css is imported
+import apiClient from './api/AxiosConfig';
 
 // --- Helper function to check for token ---
 const isLoggedIn = () => {
