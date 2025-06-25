@@ -1,13 +1,14 @@
 // src/main/java/dev/anhhoang/QTCSDLHD/models/User.java
 package dev.anhhoang.QTCSDLHD.models;
 
-import lombok.Data;
+import java.util.Set;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.util.Set;
+import lombok.Data;
 
 @Document(collection = "users") // This maps the class to the "users" collection in MongoDB
 @Data
@@ -32,4 +33,16 @@ public class User {
 
     @Field("seller_profile")
     private SellerProfile sellerProfile; // This will be null if the user is not a seller
+
+    public SellerProfile getSellerProfile() {
+        return sellerProfile;
+    }
+
+    public Set<Role> getRoles() {
+        return roles;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
 }
