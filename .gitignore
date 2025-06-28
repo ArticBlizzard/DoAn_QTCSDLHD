@@ -1,2 +1,3 @@
-/QTCSDLHD/target/
-/qtcsdlhd_fe copy/node_modules
+QTCSDLHD/target/
+qtcsdlhd__fe/node_modules/.cache/
+qtcsdlhd__fe/node_modules/
