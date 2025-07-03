@@ -45,7 +45,7 @@ function ShopManagement() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('http://localhost:8080/api/categories');
+      const res = await fetch('http://localhost:8080/api/products/categories');
       if (!res.ok) throw new Error('Network response was not ok');
       const data = await res.json();
       setCategories(data);

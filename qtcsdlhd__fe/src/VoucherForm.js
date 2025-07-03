@@ -5,6 +5,7 @@ function VoucherForm({ voucher, products, onClose, onSave }) {
     code: voucher?.code || '',
     discountType: voucher?.discountType || 'PERCENTAGE',
     discountValue: voucher?.discountValue || '',
+    minOrderValue: voucher?.minOrderValue || '',
     startDate: voucher?.startDate ? voucher.startDate.substring(0, 10) : '',
     endDate: voucher?.endDate ? voucher.endDate.substring(0, 10) : '',
   });
@@ -20,7 +21,13 @@ function VoucherForm({ voucher, products, onClose, onSave }) {
       alert('Vui lòng nhập đầy đủ thông tin');
       return;
     }
-    onSave(form);
+    // Chuyển đổi ngày sang LocalDateTime string
+    const formToSend = {
+      ...form,
+      startDate: form.startDate.length === 10 ? form.startDate + 'T00:00:00' : form.startDate,
+      endDate: form.endDate.length === 10 ? form.endDate + 'T00:00:00' : form.endDate,
+    };
+    onSave(formToSend);
   };
 
   return (
@@ -41,6 +48,10 @@ function VoucherForm({ voucher, products, onClose, onSave }) {
         <div className="voucher-form-group">
           <label>Giá trị giảm</label>
           <input name="discountValue" type="number" value={form.discountValue} onChange={handleChange} required className="voucher-input" />
+        </div>
+        <div className="voucher-form-group">
+          <label>Giá trị đơn tối thiểu</label>
+          <input name="minOrderValue" type="number" value={form.minOrderValue || ''} onChange={handleChange} className="voucher-input" min="0" />
         </div>
         <div className="voucher-form-group">
           <label>Ngày bắt đầu</label>

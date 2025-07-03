@@ -240,3 +240,22 @@
     outline: none;
     border-color: #ff6b35;
 }
+
+.see-more-btn {
+    padding: 6px 24px;
+    font-size: 15px;
+    border-radius: 16px;
+    background: #ff6b35;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-weight: 500;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    margin: 0 auto;
+    min-width: 120px;
+}
+
+.see-more-btn:hover {
+    background: #ff8c5a;
+}

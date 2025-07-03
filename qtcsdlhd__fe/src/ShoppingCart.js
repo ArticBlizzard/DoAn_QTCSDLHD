@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './ShoppingCart.css';
+import { useNavigate } from 'react-router-dom';
 
 function ShoppingCart({ onPlaceOrder }) {
     const [cartProducts, setCartProducts] = useState([]);
@@ -16,6 +17,7 @@ function ShoppingCart({ onPlaceOrder }) {
     const [selectedVouchers, setSelectedVouchers] = useState({});
     const [selectedProductIds, setSelectedProductIds] = useState([]);
     const hasAutoSelected = useRef(false);
+    const navigate = useNavigate();
 
     const displayMessage = (msg, duration = 3000) => {
         if (messageTimeoutId) {
@@ -276,6 +278,10 @@ function ShoppingCart({ onPlaceOrder }) {
         }
     };
 
+    const handleGoToCheckout = () => {
+        navigate('/checkout', { state: { selectedVouchers, selectedProductIds } });
+    };
+
     return (
         <div className="shopping-cart-container">
             <h2>Giỏ hàng của bạn</h2>
@@ -283,179 +289,94 @@ function ShoppingCart({ onPlaceOrder }) {
 
             {cartProducts.length > 0 ? (
                 <div className="cart-list">
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                        <input
-                            type="checkbox"
-                            checked={selectedProductIds.length === cartProducts.length && cartProducts.length > 0}
-                            onChange={handleSelectAll}
-                            style={{ marginRight: 8 }}
-                        />
-                        <span>Chọn tất cả</span>
-                    </div>
-                    {cartProducts.map(product => (
-                        <div key={product._id} className="cart-item">
+                    <div className="cart-items-scroll">
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                             <input
                                 type="checkbox"
-                                checked={selectedProductIds.includes(product._id)}
-                                onChange={() => handleProductCheckbox(product._id)}
-                                style={{ marginRight: 12, marginLeft: 4 }}
+                                checked={selectedProductIds.length === cartProducts.length && cartProducts.length > 0}
+                                onChange={handleSelectAll}
+                                style={{ marginRight: 8 }}
                             />
-                            <div
-                                className="product-thumbnail"
-                                style={product.image_url ? {
-                                    backgroundImage: `url(${product.image_url})`,
-                                    backgroundSize: 'cover',
-                                    backgroundRepeat: 'no-repeat',
-                                    backgroundPosition: 'center',
-                                } : {}}
-                            >
-                                {!product.image_url && <div className="no-image-thumbnail"></div>}
-                            </div>
-                            <div className="cart-item-details">
-                                <h3>{product.name}</h3>
-                                <p className="product-shop-name">Cửa hàng: {product.shop_name}</p>
-                                <p className="price">{product.price.toLocaleString('vi-VN')} VND</p>
-                                <p className="stock">Tồn kho: {product.stock}</p>
-                                <div className="actions">
-                                    <div className="voucher-section">
-                                        {(availableVouchers[product._id]?.length > 0) ? (
-                                            <select
-                                                value={selectedVouchers[product._id] || ''}
-                                                onChange={(e) => handleVoucherSelect(product._id, e.target.value)}
-                                                className="voucher-select"
-                                            >
-                                                <option value="">Chọn voucher</option>
-                                                {(availableVouchers[product._id] || []).map(voucher => (
-                                                    <option key={voucher.id} value={voucher.id}>
-                                                        {voucher.discountType === 'PERCENTAGE'
-                                                            ? `Giảm ${voucher.discountValue}%`
-                                                            : `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <div className="no-voucher-message">
-                                                Không có voucher khả dụng
-                                            </div>
-                                        )}
+                            <span>Chọn tất cả</span>
+                        </div>
+                        {cartProducts.map(product => (
+                            <div key={product._id} className="cart-item">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedProductIds.includes(product._id)}
+                                    onChange={() => handleProductCheckbox(product._id)}
+                                    style={{ marginRight: 12, marginLeft: 4 }}
+                                />
+                                <div
+                                    className="product-thumbnail"
+                                    style={product.image_url ? {
+                                        backgroundImage: `url(${product.image_url})`,
+                                        backgroundSize: 'cover',
+                                        backgroundRepeat: 'no-repeat',
+                                        backgroundPosition: 'center',
+                                    } : {}}
+                                >
+                                    {!product.image_url && <div className="no-image-thumbnail"></div>}
+                                </div>
+                                <div className="cart-item-details">
+                                    <h3>{product.name}</h3>
+                                    <p className="product-shop-name">Cửa hàng: {product.shop_name}</p>
+                                    <p className="price">{product.price.toLocaleString('vi-VN')} VND</p>
+                                    <p className="stock">Tồn kho: {product.stock}</p>
+                                    <div className="actions">
+                                        <div className="voucher-section">
+                                            {(availableVouchers[product._id]?.length > 0) ? (
+                                                <select
+                                                    value={selectedVouchers[product._id] || ''}
+                                                    onChange={(e) => handleVoucherSelect(product._id, e.target.value)}
+                                                    className="voucher-select"
+                                                >
+                                                    <option value="">Chọn voucher</option>
+                                                    {(availableVouchers[product._id] || []).map(voucher => (
+                                                        <option key={voucher.id} value={voucher.id}>
+                                                            {voucher.discountType === 'PERCENTAGE'
+                                                                ? `Giảm ${voucher.discountValue}%`
+                                                                : `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="no-voucher-message">
+                                                    Không có voucher khả dụng
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="quantity-control">
-                                <button onClick={() => handleUpdateQuantity(product._id, product.quantity - 1)}>-</button>
-                                <span>{product.quantity}</span>
-                                <button onClick={() => handleUpdateQuantity(product._id, product.quantity + 1)}>+</button>
-                            </div>
-                            <div className="price-info">
-                                {selectedVouchers[product._id] ? (
-                                    <>
-                                        <p className="original-price">
+                                <div className="quantity-control">
+                                    <button onClick={() => handleUpdateQuantity(product._id, product.quantity - 1)}>-</button>
+                                    <span>{product.quantity}</span>
+                                    <button onClick={() => handleUpdateQuantity(product._id, product.quantity + 1)}>+</button>
+                                </div>
+                                <div className="price-info">
+                                    {selectedVouchers[product._id] ? (
+                                        <>
+                                            <p className="original-price">
+                                                {(product.price * product.quantity).toLocaleString('vi-VN')} VND
+                                            </p>
+                                            <p className="discounted-price">
+                                                {calculateItemTotal(product).toLocaleString('vi-VN')} VND
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="normal-price">
                                             {(product.price * product.quantity).toLocaleString('vi-VN')} VND
                                         </p>
-                                        <p className="discounted-price">
-                                            {calculateItemTotal(product).toLocaleString('vi-VN')} VND
-                                        </p>
-                                    </>
-                                ) : (
-                                    <p className="normal-price">
-                                        {(product.price * product.quantity).toLocaleString('vi-VN')} VND
-                                    </p>
-                                )}
-                            </div>
-                            <button onClick={() => handleRemoveProduct(product._id)} className="remove-btn">Xóa</button>
-                        </div>
-                    ))}
-                    <h3 className="cart-total">Tổng cộng: {calculateTotal().toLocaleString('vi-VN')} VND</h3>
-
-                    <form onSubmit={handlePlaceOrder} className="order-form">
-                        <h4>Thông tin đặt hàng</h4>
-
-                        <div className="form-group">
-                            <label htmlFor="fullName">Họ và tên người nhận</label>
-                            <input
-                                type="text"
-                                id="fullName"
-                                value={fullName}
-                                onChange={e => setFullName(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="phoneNumber">Số điện thoại</label>
-                            <input
-                                type="tel"
-                                id="phoneNumber"
-                                value={phoneNumber}
-                                onChange={e => setPhoneNumber(e.target.value)}
-                                required
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="shippingAddress">Địa chỉ giao hàng</label>
-                            {userAddresses.length > 0 && (
-                                <select
-                                    value={selectedAddressIndex}
-                                    onChange={(e) => {
-                                        const idx = parseInt(e.target.value);
-                                        setSelectedAddressIndex(idx);
-                                        if (idx === -1) {
-                                            setShippingAddress('');
-                                        } else {
-                                            const addr = userAddresses[idx];
-                                            setShippingAddress(`${addr.street}, ${addr.ward}, ${addr.district}, ${addr.city}`);
-                                        }
-                                    }}
-                                    className="address-select"
-                                >
-                                    <option value={-1}>Địa chỉ khác</option>
-                                    {userAddresses.map((addr, idx) => (
-                                        <option key={idx} value={idx}>
-                                            {`${addr.street}, ${addr.ward}, ${addr.district}, ${addr.city}`}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
-                            <input
-                                type="text"
-                                id="shippingAddress"
-                                value={shippingAddress}
-                                onChange={e => {
-                                    setShippingAddress(e.target.value);
-                                    setSelectedAddressIndex(-1);
-                                }}
-                                required
-                                placeholder={selectedAddressIndex === -1 ? "Nhập địa chỉ giao hàng" : ""}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="paymentMethod">Phương thức thanh toán</label>
-                            <select
-                                id="paymentMethod"
-                                value={paymentMethod}
-                                onChange={e => setPaymentMethod(e.target.value)}
-                                required
-                            >
-                                <option value="Tiền mặt">Tiền mặt khi nhận hàng</option>
-                                <option value="Thẻ ngân hàng">Thanh toán bằng thẻ ngân hàng</option>
-                            </select>
-                        </div>
-
-                        {paymentMethod === 'Thẻ ngân hàng' && bankAccount && (
-                            <div className="bank-info">
-                                <h5>Thông tin tài khoản ngân hàng</h5>
-                                <div className="bank-details">
-                                    <p><strong>Ngân hàng:</strong> {bankAccount.bankName}</p>
-                                    <p><strong>Số tài khoản:</strong> {bankAccount.accountNumber}</p>
-                                    <p><strong>Chủ tài khoản:</strong> {bankAccount.accountHolder}</p>
+                                    )}
                                 </div>
+                                <button onClick={() => handleRemoveProduct(product._id)} className="remove-btn">Xóa</button>
                             </div>
-                        )}
-
-                        <button type="submit" className="place-order-btn">Đặt hàng</button>
-                    </form>
+                        ))}
+                    </div>
+                    <h3 className="cart-total">Tổng cộng: {calculateTotal().toLocaleString('vi-VN')} VND</h3>
+                    <button className="place-order-btn" onClick={handleGoToCheckout} disabled={selectedProductIds.length === 0}>
+                        Đặt hàng
+                    </button>
                 </div>
             ) : (
                 <p>Giỏ hàng trống</p>

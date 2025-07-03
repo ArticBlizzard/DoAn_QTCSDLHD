@@ -25,8 +25,8 @@ C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\jav
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\BankAccount.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\BusinessType.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\BuyerProfile.java
+C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\Cart.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\CartItem.java
-C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\Customer.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\Order.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\OrderItem.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\models\Product.java
@@ -42,7 +42,7 @@ C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\jav
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\neo4j\services\RecommendationService.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\neo4j\services\RecommendationServiceImpl.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\QtcsdlhdApplication.java
-C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\repositories\CustomerRepository.java
+C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\repositories\CartRepository.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\repositories\OrderRepository.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\repositories\ProductRepository.java
 C:\Users\THUY TRANG\Downloads\New folder (2)\DoAn_QTCSDLHD\QTCSDLHD\src\main\java\dev\anhhoang\QTCSDLHD\repositories\UserRepository.java

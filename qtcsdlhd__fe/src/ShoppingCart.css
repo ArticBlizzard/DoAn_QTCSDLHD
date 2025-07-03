@@ -26,6 +26,8 @@ h2 {
     margin-top: 20px;
     border-top: 1px solid #eee;
     padding-top: 20px;
+    max-height: none;
+    overflow-y: visible;
 }
 
 .cart-item {
@@ -258,8 +260,11 @@ h2 {
 }
 
 .place-order-btn:disabled {
-    background-color: #ffa494;
+    background: #ccc;
+    color: #fff;
+    border: 2px solid #ccc;
     cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .bank-info {
@@ -390,4 +395,34 @@ h2 {
     font-weight: bold;
     font-size: 1.1em;
     margin: 0;
+}
+
+.back-btn {
+    background: #fff;
+    color: #ee4d2d;
+    border: 2px solid #ee4d2d;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+    margin-right: 10px;
+    margin-top: 18px;
+    margin-left: 0;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: none;
+}
+
+.back-btn:hover {
+    background: #ee4d2d;
+    color: #fff;
+}
+
+.cart-items-scroll {
+    max-height: 600px;
+    overflow-y: auto;
 }

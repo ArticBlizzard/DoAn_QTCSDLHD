@@ -8,6 +8,7 @@ function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOp
     const [message, setMessage] = useState('');
     const [categories, setCategories] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [visibleRows, setVisibleRows] = useState(5);
 
     const fetchCategories = async () => {
         try {
@@ -85,6 +86,7 @@ function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOp
             fetchProducts('', '', sortOption, !!userId);
         }
         fetchCategories();
+        setVisibleRows(5);
         // eslint-disable-next-line
     }, [userId, searchTerm, sortOption, isSearching]);
 
@@ -118,6 +120,12 @@ function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOp
         setIsSearching(true);
         fetchProducts(searchTerm, '', newSortOption);
     };
+
+    const productsPerRow = 4;
+    const visibleCount = visibleRows * productsPerRow;
+    const displayedProducts = (!isSearching && userId)
+        ? products.slice(0, visibleCount)
+        : products;
 
     return (
         <div className="product-catalog-container">
@@ -170,8 +178,8 @@ function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOp
             {message && <p className="message error">{message}</p>}
 
             <div className="product-list">
-                {products.length > 0 ? (
-                    products.map(product => (
+                {displayedProducts.length > 0 ? (
+                    displayedProducts.map(product => (
                         <div key={product._id} className="product-item">
                             <div
                                 className="product-image-container"
@@ -197,6 +205,17 @@ function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOp
                     <p>Không tìm thấy sản phẩm nào.</p>
                 )}
             </div>
+
+            {!isSearching && userId && displayedProducts.length < products.length && (
+                <div style={{ textAlign: 'center', margin: '32px 0' }}>
+                    <button
+                        className="see-more-btn"
+                        onClick={() => setVisibleRows(visibleRows + 4)}
+                    >
+                        Xem thêm
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

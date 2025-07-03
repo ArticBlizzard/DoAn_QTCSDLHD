@@ -2,10 +2,10 @@ package dev.anhhoang.QTCSDLHD.services;
 
 import dev.anhhoang.QTCSDLHD.dto.*;
 import dev.anhhoang.QTCSDLHD.models.*;
-import dev.anhhoang.QTCSDLHD.repositories.CustomerRepository;
 import dev.anhhoang.QTCSDLHD.repositories.OrderRepository;
 import dev.anhhoang.QTCSDLHD.repositories.ProductRepository;
 import dev.anhhoang.QTCSDLHD.repositories.UserRepository;
+import dev.anhhoang.QTCSDLHD.repositories.CartRepository;
 import dev.anhhoang.QTCSDLHD.neo4j.services.RecommendationService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class CustomerServiceImpl implements CustomerService {
 
     @Autowired
-    private CustomerRepository customerRepository;
+    private UserRepository userRepository;
 
     @Autowired
     private ProductRepository productRepository;
@@ -33,7 +33,7 @@ public class CustomerServiceImpl implements CustomerService {
     private OrderRepository orderRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private CartRepository cartRepository;
 
     @Autowired
     private VoucherService voucherService;
@@ -43,12 +43,23 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
-        Customer customer = customerRepository.findById(customerId)
+        User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        Optional<CartItem> existingCartItem = customer.getCart().stream()
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElseGet(() -> {
+                    Cart newCart = new Cart();
+                    newCart.setCustomerId(customerId);
+                    newCart.setStatus("active");
+                    newCart.setCreated_at(LocalDateTime.now());
+                    newCart.setUpdated_at(LocalDateTime.now());
+                    newCart.setItems(new ArrayList<>());
+                    return cartRepository.save(newCart);
+                });
+
+        Optional<CartItem> existingCartItem = cart.getItems().stream()
                 .filter(item -> item.getProduct_id().equals(request.getProductId()))
                 .findFirst();
 
@@ -58,65 +69,68 @@ public class CustomerServiceImpl implements CustomerService {
             CartItem newCartItem = new CartItem();
             newCartItem.setProduct_id(product.get_id());
             newCartItem.setQuantity(request.getQuantity());
-            customer.getCart().add(newCartItem);
+            cart.getItems().add(newCartItem);
         }
-        customer.setUpdated_at(LocalDateTime.now());
-        customerRepository.save(customer);
-        return convertToUserProfileResponse(customer);
+        cart.setStatus("active");
+        cart.setUpdated_at(LocalDateTime.now());
+        cartRepository.save(cart);
+        return convertToUserProfileResponse(user);
     }
 
     @Override
     public UserProfileResponse removeProductFromCart(String customerId, RemoveFromCartRequest request) {
-        Customer customer = customerRepository.findById(customerId)
+        User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-        boolean removed = customer.getCart().removeIf(item -> item.getProduct_id().equals(request.getProductId()));
-
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElseThrow(() -> new RuntimeException("No cart found"));
+        boolean removed = cart.getItems().removeIf(item -> item.getProduct_id().equals(request.getProductId()));
         if (!removed) {
             throw new RuntimeException("Product not found in cart");
         }
-        customer.setUpdated_at(LocalDateTime.now());
-        customerRepository.save(customer);
-        return convertToUserProfileResponse(customer);
+        cart.setStatus("active");
+        cart.setUpdated_at(LocalDateTime.now());
+        cartRepository.save(cart);
+        return convertToUserProfileResponse(user);
     }
 
     @Override
     public UserProfileResponse updateCartItemQuantity(String customerId, String productId, Integer quantity) {
-        Customer customer = customerRepository.findById(customerId)
+        User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-        CartItem cartItem = customer.getCart().stream()
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElseThrow(() -> new RuntimeException("No cart found"));
+        CartItem cartItem = cart.getItems().stream()
                 .filter(item -> item.getProduct_id().equals(productId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Product not found in cart"));
-
         if (quantity <= 0) {
-            customer.getCart().remove(cartItem);
+            cart.getItems().remove(cartItem);
         } else {
             cartItem.setQuantity(quantity);
         }
-        customer.setUpdated_at(LocalDateTime.now());
-        customerRepository.save(customer);
-        return convertToUserProfileResponse(customer);
+        cart.setStatus("active");
+        cart.setUpdated_at(LocalDateTime.now());
+        cartRepository.save(cart);
+        return convertToUserProfileResponse(user);
     }
 
     @Override
     public List<ProductResponse> getCartProducts(String customerId) {
-        Customer customer = customerRepository.findById(customerId)
+        User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-        return customer.getCart().stream()
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElse(null);
+        if (cart == null || cart.getItems().isEmpty())
+            return new ArrayList<>();
+        return cart.getItems().stream()
                 .map(cartItem -> productRepository.findById(cartItem.getProduct_id())
                         .map(product -> {
                             ProductResponse productResponse = new ProductResponse();
                             BeanUtils.copyProperties(product, productResponse);
                             productResponse.setQuantity(cartItem.getQuantity());
-                            // Explicitly set shop_name, with fallback to SellerProfile if product.shopname
-                            // is null
                             if (product.getShopname() != null && !product.getShopname().isEmpty()) {
                                 productResponse.setShop_name(product.getShopname());
                             } else if (product.getShopid() != null) {
-                                // Fetch the seller's user profile to get the shop name
                                 userRepository.findBySellerProfileShopId(product.getShopid()).ifPresent(sellerUser -> {
                                     if (sellerUser.getSellerProfile() != null
                                             && sellerUser.getSellerProfile().getShopName() != null) {
@@ -126,8 +140,7 @@ public class CustomerServiceImpl implements CustomerService {
                             }
                             return productResponse;
                         })
-                        .orElse(null) // Handle case where product in cart is not found in DB (e.g., deleted product)
-                )
+                        .orElse(null))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -135,10 +148,11 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional
     public String createOrderFromCart(String customerId, CreateOrderRequest request) {
-        Customer customer = customerRepository.findById(customerId)
+        User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-        if (customer.getCart().isEmpty()) {
+        Cart cart = cartRepository.findByCustomerId(customerId)
+                .orElseThrow(() -> new RuntimeException("No cart found"));
+        if (cart.getItems().isEmpty()) {
             throw new RuntimeException("Cart is empty. Cannot create order.");
         }
 
@@ -146,10 +160,8 @@ public class CustomerServiceImpl implements CustomerService {
         String shippingAddress;
         if (!StringUtils.hasText(request.getShippingAddress())) {
             // If no address provided, get from user profile
-            User user = userRepository.findById(customerId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            if (user.getBuyerProfile() == null || user.getBuyerProfile().getPrimaryAddress() == null) {
+            if (user.getBuyerProfile() == null ||
+                    user.getBuyerProfile().getPrimaryAddress() == null) {
                 throw new RuntimeException("No shipping address found in profile. Please provide a shipping address.");
             }
 
@@ -241,19 +253,25 @@ public class CustomerServiceImpl implements CustomerService {
         List<String> orderedProductIds = request.getItems().stream()
                 .map(CartItemRequest::getProductId)
                 .collect(Collectors.toList());
-        customer.getCart().removeIf(item -> orderedProductIds.contains(item.getProduct_id()));
-        customer.getOrders().add(savedOrder.get_id());
-        customer.setUpdated_at(LocalDateTime.now());
-        customerRepository.save(customer);
+        cart.getItems().removeIf(item -> orderedProductIds.contains(item.getProduct_id()));
+        cart.setStatus("checked_out");
+        cart.setItems(new ArrayList<>()); // Xóa hết sản phẩm khỏi cart
+        cart.setUpdated_at(LocalDateTime.now());
+        cartRepository.save(cart);
+
+        // Reset lại cart cho user tiếp tục mua sắm
+        cart.setStatus("active");
+        cart.setUpdated_at(LocalDateTime.now());
+        cartRepository.save(cart);
 
         return savedOrder.get_id();
     }
 
     // Assuming UserProfileResponse is an existing DTO for user information
-    private UserProfileResponse convertToUserProfileResponse(Customer customer) {
+    private UserProfileResponse convertToUserProfileResponse(User user) {
         UserProfileResponse response = new UserProfileResponse();
-        // Copy relevant properties from customer to UserProfileResponse
-        BeanUtils.copyProperties(customer, response);
+        // Copy relevant properties from user to UserProfileResponse
+        BeanUtils.copyProperties(user, response);
         return response;
     }
 }

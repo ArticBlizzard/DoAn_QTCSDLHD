@@ -34,12 +34,14 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUserProfile(Principal principal) {
         // principal.getName() gives us the email of the currently authenticated user
         UserProfileResponse userProfile = userService.findUserProfileByEmail(principal.getName());
         return ResponseEntity.ok(userProfile);
     }
+
     @PutMapping("/update-seller-profile")
     @PreAuthorize("hasRole('SELLER')") // Đảm bảo chỉ người bán mới có thể gọi API này
     public ResponseEntity<?> updateSellerProfile(@RequestBody UpdateSellerProfileRequest request, Principal principal) {
@@ -50,6 +52,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
     @PutMapping("/update-buyer-profile")
     @PreAuthorize("hasRole('BUYER')") // Đảm bảo người dùng có vai trò BUYER
     public ResponseEntity<?> updateBuyerProfile(@RequestBody UpdateBuyerProfileRequest request, Principal principal) {

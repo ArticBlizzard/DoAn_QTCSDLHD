@@ -4,6 +4,7 @@ import ProductCatalog from './ProductCatalog';
 import ShoppingCart from './ShoppingCart';
 import ProductDetail from './ProductDetail';
 import ShopManagement from './ShopManagement';
+import Checkout from './Checkout';
 import './App.css'; // Make sure App.css is imported
 import apiClient from './api/AxiosConfig';
 
@@ -558,7 +559,7 @@ function App() {
           </Link>
           <nav>
             <Link to="/">Trang chủ</Link>
-            {isLoggedInState && <Link to="/cart">Giỏ hàng ({cart.length})</Link>}
+            {isLoggedInState && <Link to="/cart">Giỏ hàng</Link>}
             {isLoggedInState && <Link to="/dashboard">Hồ sơ</Link>}
             {userProfile && userProfile.roles.includes('ROLE_SELLER') && (
               <Link to="/shop-management">Quản lý Shop</Link>
@@ -593,11 +594,12 @@ function App() {
               }
             />
             <Route path="/product/:productId" element={isLoggedInState ? <ProductDetail onAddToCart={handleAddToCart} /> : <Navigate to="/login" />} />
-            <Route path="/cart" element={isLoggedInState ? <ShoppingCart cartItems={cart} onUpdateQuantity={handleUpdateCartQuantity} onRemoveItem={handleRemoveFromCart} onPlaceOrder={handlePlaceOrder} /> : <Navigate to="/login" />} />
+            <Route path="/cart" element={isLoggedInState ? <ShoppingCart cartItems={cart} onUpdateQuantity={handleUpdateCartQuantity} onRemoveItem={handleRemoveFromCart} onPlaceOrder={handlePlaceOrder} refreshCart={fetchCartProducts} /> : <Navigate to="/login" />} />
             <Route path="/dashboard" element={isLoggedInState ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} />
             <Route path="/shop-management" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <ShopManagement /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />
             <Route path="/login" element={!isLoggedInState ? <Login onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
             <Route path="/signup" element={!isLoggedInState ? <SignUp /> : <Navigate to="/" />} />
+            <Route path="/checkout" element={<Checkout />} />
           </Routes>
         </main>
       </div>

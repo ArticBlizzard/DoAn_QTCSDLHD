@@ -32,7 +32,6 @@ dev\anhhoang\QTCSDLHD\services\UserService.class
 dev\anhhoang\QTCSDLHD\QtcsdlhdApplication.class
 dev\anhhoang\QTCSDLHD\models\BankAccount.class
 dev\anhhoang\QTCSDLHD\neo4j\services\RecommendationServiceImpl.class
-dev\anhhoang\QTCSDLHD\repositories\CustomerRepository.class
 dev\anhhoang\QTCSDLHD\models\Address.class
 dev\anhhoang\QTCSDLHD\dto\UpdateBuyerProfileRequest.class
 dev\anhhoang\QTCSDLHD\models\User.class
@@ -43,7 +42,6 @@ dev\anhhoang\QTCSDLHD\dto\AuthResponse.class
 dev\anhhoang\QTCSDLHD\controllers\TestController.class
 dev\anhhoang\QTCSDLHD\neo4j\services\RecommendationService.class
 dev\anhhoang\QTCSDLHD\dto\AddToCartRequest.class
-dev\anhhoang\QTCSDLHD\models\Customer.class
 dev\anhhoang\QTCSDLHD\repositories\UserRepository.class
 dev\anhhoang\QTCSDLHD\services\CustomerService.class
 dev\anhhoang\QTCSDLHD\security\JwtAuthFilter.class
