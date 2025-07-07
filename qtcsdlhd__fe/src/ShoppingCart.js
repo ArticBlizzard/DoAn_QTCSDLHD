@@ -105,6 +105,8 @@ function ShoppingCart({ onPlaceOrder }) {
                     ...prev,
                     [productId]: vouchers
                 }));
+            } else {
+                console.error(`Failed to fetch vouchers for product ${productId}:`, response.status, response.statusText);
             }
         } catch (error) {
             console.error('Error fetching vouchers:', error);
@@ -191,10 +193,15 @@ function ShoppingCart({ onPlaceOrder }) {
         const voucher = productVouchers.find(v => v.id === selectedVoucher);
 
         if (voucher) {
-            if (voucher.discountType === 'PERCENTAGE') {
-                total = total * (1 - voucher.discountValue / 100);
-            } else if (voucher.discountType === 'FIXED') {
-                total = total - voucher.discountValue;
+            // Check if minimum order value is met
+            const canUseVoucher = !voucher.minOrderValue || total >= voucher.minOrderValue;
+            
+            if (canUseVoucher) {
+                if (voucher.discountType === 'PERCENTAGE') {
+                    total = total * (1 - voucher.discountValue / 100);
+                } else if (voucher.discountType === 'FIXED') {
+                    total = total - voucher.discountValue;
+                }
             }
         }
 
@@ -332,13 +339,25 @@ function ShoppingCart({ onPlaceOrder }) {
                                                     className="voucher-select"
                                                 >
                                                     <option value="">Chọn voucher</option>
-                                                    {(availableVouchers[product._id] || []).map(voucher => (
-                                                        <option key={voucher.id} value={voucher.id}>
-                                                            {voucher.discountType === 'PERCENTAGE'
-                                                                ? `Giảm ${voucher.discountValue}%`
-                                                                : `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`}
-                                                        </option>
-                                                    ))}
+                                                    {(availableVouchers[product._id] || []).map(voucher => {
+                                                        const canUse = !voucher.minOrderValue || (product.price * product.quantity) >= voucher.minOrderValue;
+                                                        const displayText = voucher.discountType === 'PERCENTAGE'
+                                                            ? `Giảm ${voucher.discountValue}%`
+                                                            : `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`;
+                                                        const minOrderText = voucher.minOrderValue 
+                                                            ? ` (Tối thiểu ${voucher.minOrderValue.toLocaleString('vi-VN')} VND)`
+                                                            : '';
+                                                        
+                                                        return (
+                                                            <option 
+                                                                key={voucher.id} 
+                                                                value={voucher.id}
+                                                                disabled={!canUse}
+                                                            >
+                                                                {displayText}{minOrderText}{!canUse ? ' - Không đủ điều kiện' : ''}
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </select>
                                             ) : (
                                                 <div className="no-voucher-message">

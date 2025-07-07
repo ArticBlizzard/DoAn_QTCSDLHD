@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SellerProduct from './SellerProduct';
 import VoucherManagement from './VoucherManagement';
 import './ShopManagement.css';
 
 function ShopManagement() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
@@ -18,6 +20,22 @@ function ShopManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [vouchers, setVouchers] = useState([]);
+
+  // Thêm class để override CSS chỉ khi ShopManagement active
+  useEffect(() => {
+    // Thêm class ngay khi component mount
+    document.body.classList.add('shop-management-active');
+    
+    // Đảm bảo scroll được reset về top
+    window.scrollTo(0, 0);
+    
+    // Cleanup function để loại bỏ class khi component unmount
+    return () => {
+      document.body.classList.remove('shop-management-active');
+      // Reset overflow cho body khi thoát
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -144,22 +162,10 @@ function ShopManagement() {
   // Lấy danh sách category duy nhất từ sản phẩm
   const uniqueCategories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
 
-  // Hàm xử lý thay đổi category
-  function handleCategoryChange(e) {
-    setSelectedCategory(e.target.value);
-  }
-
-  // Hàm lấy mã voucher áp dụng cho sản phẩm
-  function getVoucherCodeForProduct(productId) {
-    const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(productId));
-    return voucher ? voucher.code : 'Chưa áp dụng';
-  }
-
   // Thêm hàm xử lý hủy áp dụng voucher
-  function handleRemoveVoucher(productId) {
+  function handleRemoveVoucher(productId, voucherId) {
     const token = localStorage.getItem('token');
-    const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(productId));
-    if (!voucher) {
+    if (!voucherId) {
       alert('Không tìm thấy voucher để hủy');
       return;
     }
@@ -169,7 +175,7 @@ function ShopManagement() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ voucherId: voucher.id, productId })
+      body: JSON.stringify({ voucherId, productId })
     })
       .then(async res => {
         const text = await res.text();
@@ -181,147 +187,328 @@ function ShopManagement() {
   }
 
   return (
-    <div className="product-management-page">
-      <div className="sidebar">
-        <div className="sidebar-title">Quản Lý Sản Phẩm</div>
-        <div className="sidebar-item active">Tất Cả Sản Phẩm</div>
-        {/* Đã bỏ mục Thêm Sản Phẩm */}
-      </div>
-      <div className="main-content">
-        <div className="header-row">
-          <div className="tabs">
-            <select
-              id="category-select"
-              className="category-select"
-              value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
+    <>
+      <div className="shop-management-wrapper">
+        <div className="product-management-page">
+          <div className="sidebar">
+            <div className="sidebar-title">🏪 Quản Lý Shop</div>
+            <div className="sidebar-item active">📦 Tất Cả Sản Phẩm</div>
+            <div 
+              className="sidebar-item"
+              onClick={() => navigate('/order-management')}
+              style={{ cursor: 'pointer' }}
+              title="Chuyển đến trang quản lý đơn hàng"
             >
-              <option value="all">Tất cả</option>
-              {uniqueCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+              📋 Quản lý Đơn hàng
+            </div>
+            <div 
+              className="sidebar-item"
+              onClick={() => navigate('/revenue-analytics')}
+              style={{ cursor: 'pointer' }}
+              title="Chuyển đến trang báo cáo doanh thu"
+            >
+              📊 Báo cáo Doanh thu
+            </div>
           </div>
-          <div className="header-actions">
-            <button className="header-btn" onClick={() => setShowVoucherModal(true)}>Quản lý voucher</button>
-            <button className="add-btn" onClick={handleAdd}>+ Thêm 1 sản phẩm mới</button>
-          </div>
-        </div>
-        <div className="filter-row">
-          <input
-            className="search-input"
-            placeholder="Tìm tên sản phẩm, SKU..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <button className="filter-btn">Áp dụng</button>
-        </div>
-        <div className="product-table-wrapper">
+          <div className="main-content">
+            {/* Fixed Headers */}
+            <div className="fixed-headers">
+              <div className="header-row">
+                <div className="tabs">
+                  <select
+                    id="category-select"
+                    className="category-select"
+                    value={selectedCategory}
+                    onChange={e => setSelectedCategory(e.target.value)}
+                  >
+                    <option value="all">Tất cả</option>
+                    {uniqueCategories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="header-actions">
+                  <button className="header-btn" onClick={() => setShowVoucherModal(true)}>
+                    🎫 Quản lý voucher
+                  </button>
+                  <button className="add-btn" onClick={handleAdd}>
+                    ➕ Thêm sản phẩm mới
+                  </button>
+                </div>
+              </div>
+              <div className="filter-row">
+                <input
+                  className="search-input"
+                  placeholder="🔍 Tìm kiếm tên sản phẩm, SKU..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                <button className="filter-btn">🔎 Tìm kiếm</button>
+              </div>
+            </div>
+            
+            {/* Scrollable Content */}
+            <div className="scrollable-content">
+              <div className="product-table-wrapper">
           <table className="product-table">
             <thead>
               <tr>
-                <th></th>
-                <th style={{ fontSize: '15px' }}>Tên sản phẩm</th>
-                <th style={{ fontSize: '15px', cursor: 'pointer' }} onClick={() => handleSort('price')}>
-                  Giá <span style={{ fontSize: '13px' }}>↕</span>
+                <th>✅</th>
+                <th>📋 Tên sản phẩm</th>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleSort('price')}>
+                  💰 Giá {sortField === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
-                <th style={{ fontSize: '15px', cursor: 'pointer' }} onClick={() => handleSort('stock')}>
-                  Kho hàng <span style={{ fontSize: '13px' }}>↕</span>
+                <th style={{ cursor: 'pointer' }} onClick={() => handleSort('stock')}>
+                  📦 Kho hàng {sortField === 'stock' && (sortOrder === 'asc' ? '↑' : '↓')}
                 </th>
-                <th style={{ fontSize: '15px' }}>Áp dụng voucher</th>
-                <th style={{ fontSize: '15px' }}>Thao tác</th>
+                <th>🎫 Voucher áp dụng</th>
+                <th>⚙️ Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {sortedProducts.map(product => (
-                <tr key={product._id} style={{ fontSize: '15px' }}>
-                  <td><input type="checkbox" /></td>
+                <tr key={product._id}>
+                  <td><input type="checkbox" className="checkbox-input" /></td>
                   <td>
                     <div className="product-info">
                       <img src={product.image_url} alt={product.name} className="product-img larger" />
                       <div>
-                        <div className="product-name" style={{ fontSize: '18px', fontWeight: 700 }}>{product.name}</div>
-                        {/* Đã xóa SKU và ID */}
+                        <div className="product-name">{product.name}</div>
                       </div>
                     </div>
                   </td>
-                  <td>{product.price?.toLocaleString('vi-VN')} VND</td>
-                  <td>{product.stock}</td>
+                  <td>
+                    <span className="price-display">
+                      {product.price?.toLocaleString('vi-VN')} ₫
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`stock-display ${product.stock === 0 ? 'out' : product.stock < 10 ? 'low' : ''}`}>
+                      {product.stock === 0 ? 'Hết hàng' : `${product.stock} sản phẩm`}
+                    </span>
+                  </td>
                   <td>
                     {(() => {
-                      const voucher = vouchers.find(v => Array.isArray(v.productIds) && v.productIds.includes(product._id));
-                      if (voucher) {
+                      const applicableVouchers = vouchers.filter(v => Array.isArray(v.productIds) && v.productIds.includes(product._id));
+                      if (applicableVouchers.length > 0) {
                         return (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                            <span>{voucher.code}</span>
-                            <button
-                              style={{ marginTop: 4, fontSize: 13, color: '#e53935', background: 'none', border: '1px solid #e53935', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}
-                              onClick={() => handleRemoveVoucher(product._id)}
-                            >
-                              Hủy áp dụng
-                            </button>
+                          <div className="voucher-container">
+                            {applicableVouchers.map((voucher, index) => (
+                              <div key={voucher.id} className="voucher-item">
+                                <span className="voucher-code">{voucher.code}</span>
+                                <button
+                                  className="voucher-remove-btn"
+                                  onClick={() => handleRemoveVoucher(product._id, voucher.id)}
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         );
                       } else {
-                        return <span>Chưa áp dụng</span>;
+                        return <span className="no-voucher">Chưa áp dụng</span>;
                       }
                     })()}
                   </td>
                   <td>
                     <div className="action-btn-group">
-                      <button className="action-btn" onClick={() => handleEdit(product)}>Cập nhật</button>
-                      <button className="action-btn" onClick={() => setDetailProduct(product)}>Xem thêm</button>
-                      <button className="action-btn delete-btn" onClick={() => handleDelete(product._id)}>Xóa</button>
+                      <button 
+                        className="action-btn" 
+                        onClick={() => handleEdit(product)}
+                        title="Chỉnh sửa sản phẩm"
+                      >
+                        ✏️ Sửa
+                      </button>
+                      <button 
+                        className="action-btn" 
+                        onClick={() => setDetailProduct(product)}
+                        title="Xem chi tiết sản phẩm"
+                      >
+                        👁️ Xem
+                      </button>
+                      <button 
+                        className="action-btn delete-btn" 
+                        onClick={() => handleDelete(product._id)}
+                        title="Xóa sản phẩm"
+                      >
+                        🗑️ Xóa
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {sortedProducts.length === 0 && (
-                <tr><td colSpan="7" style={{ textAlign: 'center', color: '#888' }}>Không có sản phẩm</td></tr>
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', color: '#718096', fontStyle: 'italic', padding: '40px' }}>
+                    📭 Không có sản phẩm nào
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
       {showForm && <SellerProduct product={editProduct} onClose={handleFormClose} />}
       {detailProduct && (
-        <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div style={{ background: '#fff', borderRadius: 12, padding: 32, minWidth: 340, maxWidth: 400, boxShadow: '0 2px 16px #0002', position: 'relative' }}>
-            <button onClick={() => setDetailProduct(null)} style={{ position: 'absolute', top: 12, right: 18, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer' }}>&times;</button>
+        <div className="modal" style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', 
+          justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' 
+        }}>
+          <div style={{ 
+            background: '#fff', borderRadius: 20, padding: 32, minWidth: 400, maxWidth: 500, 
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)', position: 'relative',
+            maxHeight: '90vh', overflowY: 'auto'
+          }}>
+            <button 
+              onClick={() => setDetailProduct(null)} 
+              style={{ 
+                position: 'absolute', top: 16, right: 20, background: 'none', 
+                border: 'none', fontSize: 28, cursor: 'pointer', color: '#666',
+                transition: 'color 0.3s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#e53e3e'}
+              onMouseLeave={(e) => e.target.style.color = '#666'}
+            >
+              ✕
+            </button>
             {detailProduct.image_url && (
-              <img src={detailProduct.image_url} alt={detailProduct.name} style={{ width: '100%', height: 220, objectFit: 'cover', borderRadius: 8, marginBottom: 16 }} />
+              <img 
+                src={detailProduct.image_url} 
+                alt={detailProduct.name} 
+                style={{ 
+                  width: '100%', height: 240, objectFit: 'cover', borderRadius: 16, 
+                  marginBottom: 20, border: '2px solid #e9ecef'
+                }} 
+              />
             )}
-            <div style={{ fontWeight: 700, fontSize: 22, color: '#222', marginBottom: 8 }}>{detailProduct.name}</div>
-            <div style={{ fontWeight: 600, color: '#e53935', fontSize: 18, marginBottom: 8 }}>{detailProduct.price?.toLocaleString('vi-VN')} VND</div>
-            <div style={{ color: detailProduct.stock === 0 ? '#e53935' : '#666', fontSize: 15, marginBottom: 8 }}>
-              {detailProduct.stock === 0 ? 'Hết hàng' : `Tồn kho: ${detailProduct.stock}`}
+            <div style={{ 
+              fontWeight: 700, fontSize: 24, color: '#2d3748', marginBottom: 12,
+              lineHeight: 1.3
+            }}>
+              {detailProduct.name}
             </div>
-            <div style={{ fontSize: 15, marginBottom: 8 }}><b>Danh mục:</b> {detailProduct.category}</div>
-            <div style={{ fontSize: 15, marginBottom: 16, maxHeight: 160, overflowY: 'auto', paddingRight: 8 }}><b>Mô tả:</b> {detailProduct.description}</div>
-            {/* Hiển thị thời gian tạo/cập nhật */}
+            <div style={{ 
+              fontWeight: 700, color: '#e53e3e', fontSize: 20, marginBottom: 12,
+              background: 'rgba(229, 62, 62, 0.1)', padding: '8px 16px', 
+              borderRadius: 8, display: 'inline-block'
+            }}>
+              {detailProduct.price?.toLocaleString('vi-VN')} ₫
+            </div>
+            <div style={{ 
+              color: detailProduct.stock === 0 ? '#e53e3e' : detailProduct.stock < 10 ? '#ed8936' : '#38a169', 
+              fontSize: 16, marginBottom: 16, fontWeight: 600,
+              background: detailProduct.stock === 0 ? 'rgba(229, 62, 62, 0.1)' : 
+                         detailProduct.stock < 10 ? 'rgba(237, 137, 54, 0.1)' : 'rgba(56, 161, 105, 0.1)',
+              padding: '8px 16px', borderRadius: 8, display: 'inline-block'
+            }}>
+              {detailProduct.stock === 0 ? '📦 Hết hàng' : `📦 Tồn kho: ${detailProduct.stock} sản phẩm`}
+            </div>
+            <div style={{ fontSize: 16, marginBottom: 16, color: '#4a5568' }}>
+              <strong>🏷️ Danh mục:</strong> 
+              <span style={{ 
+                background: 'rgba(102, 126, 234, 0.1)', color: '#667eea', 
+                padding: '4px 12px', borderRadius: 8, marginLeft: 8, fontWeight: 600
+              }}>
+                {detailProduct.category}
+              </span>
+            </div>
+            <div style={{ 
+              fontSize: 15, marginBottom: 20, maxHeight: 180, overflowY: 'auto', 
+              paddingRight: 8, color: '#4a5568', lineHeight: 1.6,
+              background: '#f8f9fa', padding: 16, borderRadius: 12
+            }}>
+              <strong>📝 Mô tả:</strong><br />
+              {detailProduct.description}
+            </div>
             {(detailProduct.updated_at || detailProduct.created_at) && (
-              <div style={{ fontSize: 14, color: '#888', marginBottom: 8 }}>
-                <b>Thời gian cập nhật:</b> {detailProduct.updated_at ? new Date(detailProduct.updated_at).toLocaleString('vi-VN') : new Date(detailProduct.created_at).toLocaleString('vi-VN')}
+              <div style={{ 
+                fontSize: 13, color: '#718096', marginBottom: 16,
+                background: '#f1f3f4', padding: '8px 12px', borderRadius: 8
+              }}>
+                <strong>🕒 Cập nhật lần cuối:</strong> {
+                  detailProduct.updated_at ? 
+                    new Date(detailProduct.updated_at).toLocaleString('vi-VN') : 
+                    new Date(detailProduct.created_at).toLocaleString('vi-VN')
+                }
               </div>
             )}
-            {/* Đã bỏ nút chỉnh sửa sản phẩm */}
           </div>
         </div>
       )}
       {showDeleteModal && (
-        <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#0008', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
-          <div style={{ background: '#fff', borderRadius: 10, padding: 32, minWidth: 320, boxShadow: '0 2px 16px #0002', textAlign: 'center' }}>
-            <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 18 }}>Xác nhận xóa sản phẩm</div>
-            <div style={{ marginBottom: 24 }}>Bạn có chắc muốn xóa sản phẩm này?</div>
+        <div className="modal" style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', 
+          justifyContent: 'center', zIndex: 3000, backdropFilter: 'blur(4px)' 
+        }}>
+          <div style={{ 
+            background: '#fff', borderRadius: 20, padding: 40, minWidth: 380, 
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)', textAlign: 'center' 
+          }}>
+            <div style={{ 
+              fontSize: 48, marginBottom: 20, color: '#e53e3e' 
+            }}>
+              🗑️
+            </div>
+            <div style={{ 
+              fontSize: 20, fontWeight: 600, marginBottom: 16, color: '#2d3748' 
+            }}>
+              Xác nhận xóa sản phẩm
+            </div>
+            <div style={{ 
+              marginBottom: 32, color: '#4a5568', fontSize: 16, lineHeight: 1.5 
+            }}>
+              Bạn có chắc muốn xóa sản phẩm này không?<br />
+              <span style={{ color: '#e53e3e', fontWeight: 600 }}>
+                Hành động này không thể hoàn tác!
+              </span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-              <button className="action-btn delete-btn" style={{ background: '#e53935', color: '#fff' }} onClick={confirmDelete}>Xóa</button>
-              <button className="action-btn" onClick={() => setShowDeleteModal(false)}>Hủy</button>
+              <button 
+                style={{ 
+                  background: 'linear-gradient(135deg, #e53e3e 0%, #c53030 100%)', 
+                  color: '#fff', border: 'none', padding: '12px 24px', 
+                  borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  transition: 'all 0.3s ease', textTransform: 'uppercase', letterSpacing: '0.5px'
+                }} 
+                onClick={confirmDelete}
+                onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
+                onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+              >
+                🗑️ Xóa ngay
+              </button>
+              <button 
+                style={{ 
+                  background: '#fff', color: '#667eea', border: '2px solid #667eea', 
+                  padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, 
+                  cursor: 'pointer', transition: 'all 0.3s ease', textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }} 
+                onClick={() => setShowDeleteModal(false)}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#667eea';
+                  e.target.style.color = '#fff';
+                  e.target.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = '#fff';
+                  e.target.style.color = '#667eea';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                ↩️ Hủy bỏ
+              </button>
             </div>
           </div>
         </div>
       )}
       {showVoucherModal && <VoucherManagement onClose={() => setShowVoucherModal(false)} onVoucherApplied={fetchVouchers} />}
-    </div>
+    </>
   );
 }
 
