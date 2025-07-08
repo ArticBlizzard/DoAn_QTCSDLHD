@@ -35,13 +35,12 @@ public class VoucherService {
     public List<Voucher> getApplicableVouchersForProduct(String productId, BigDecimal productPrice) {
         LocalDateTime now = LocalDateTime.now();
         List<Voucher> productVouchers = voucherRepository.findByProductIdsContaining(productId);
-        // Filter out expired or not yet active vouchers, and check minOrderValue (if
-        // applicable)
+        
+        // Only filter out expired or not yet active vouchers
+        // minOrderValue will be checked when applying voucher with actual cart total
         return productVouchers.stream()
                 .filter(voucher -> ((voucher.getStartDate() == null || !now.isBefore(voucher.getStartDate())) &&
-                        (voucher.getEndDate() == null || !now.isAfter(voucher.getEndDate())) &&
-                        (voucher.getMinOrderValue() == null
-                                || productPrice.compareTo(voucher.getMinOrderValue()) >= 0)))
+                        (voucher.getEndDate() == null || !now.isAfter(voucher.getEndDate()))))
                 .collect(java.util.stream.Collectors.toList());
     }
 
