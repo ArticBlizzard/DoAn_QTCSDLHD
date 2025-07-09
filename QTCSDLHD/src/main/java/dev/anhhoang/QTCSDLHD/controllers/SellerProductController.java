@@ -63,7 +63,8 @@ public class SellerProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody Product updatedProduct, Principal principal) {
+    public ResponseEntity<?> updateProduct(@PathVariable String id, @RequestBody Product updatedProduct,
+            Principal principal) {
         Optional<User> userOpt = userRepository.findByEmail(principal.getName());
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(401).body("User not found");

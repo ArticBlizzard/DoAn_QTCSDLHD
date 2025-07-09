@@ -19,13 +19,20 @@ function Checkout() {
     const location = useLocation();
 
     useEffect(() => {
-        fetchCartProducts();
+        if (location.state && location.state.productsFromBuyNow) {
+            setCartProducts(location.state.productsFromBuyNow);
+            // Also set selectedProductIds for a single product buy now
+            setSelectedProductIds(location.state.productsFromBuyNow.map(p => p._id));
+        } else {
+            fetchCartProducts();
+            // Re-add logic to set selectedProductIds when coming from the cart
+            if (location.state && location.state.selectedProductIds) {
+                setSelectedProductIds(location.state.selectedProductIds);
+            }
+        }
         fetchUserProfile();
         if (location.state && location.state.selectedVouchers) {
             setSelectedVouchers(location.state.selectedVouchers);
-        }
-        if (location.state && location.state.selectedProductIds) {
-            setSelectedProductIds(location.state.selectedProductIds);
         }
     }, []);
 
@@ -157,16 +164,20 @@ function Checkout() {
                     shippingAddress,
                     paymentMethod,
                     bankAccount: paymentMethod === 'Thẻ ngân hàng' ? bankAccount : null,
-                    items: orderItems
+                    items: orderItems,
+                    isBuyNow: location.state?.isBuyNow || false // Pass the isBuyNow flag to backend
                 })
             });
             if (response.ok) {
                 setMessage('Đặt hàng thành công!');
                 setTimeout(() => navigate('/'), 2000);
             } else {
-                setMessage('Lỗi tạo đơn hàng!');
+                // Attempt to parse error message from backend
+                const errorData = await response.json();
+                setMessage(errorData.message || 'Lỗi tạo đơn hàng!');
             }
         } catch (error) {
+            // Handle network errors or other unexpected errors
             setMessage('Lỗi mạng khi tạo đơn hàng!');
         }
     };

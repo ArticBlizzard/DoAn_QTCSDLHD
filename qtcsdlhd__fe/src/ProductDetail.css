@@ -114,10 +114,12 @@
     background: #e94560;
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 14px 25px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    font-size: 16px;
+    /* Ensure font size is consistent */
     transition: background 0.3s;
 }
 
@@ -126,6 +128,31 @@
 }
 
 .add-to-cart-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.buy-now-button {
+    background: #4CAF50;
+    /* A different color, e.g., green */
+    color: white;
+    border: none;
+    padding: 14px 25px;
+    /* Match add-to-cart-button padding */
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    /* Ensure font size is consistent */
+    transition: background 0.3s;
+}
+
+.buy-now-button:hover:not(:disabled) {
+    background: #45a049;
+    /* Darker green on hover */
+}
+
+.buy-now-button:disabled {
     background: #ccc;
     cursor: not-allowed;
 }

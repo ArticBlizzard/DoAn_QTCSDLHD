@@ -140,7 +140,19 @@ public class CustomerServiceImpl implements CustomerService {
                             }
                             return productResponse;
                         })
-                        .orElse(null))
+                        .orElseGet(() -> {
+                            // If product not found in ProductRepository, return a ProductResponse with
+                            // stock 0
+                            // This allows the frontend to display it as out of stock/unavailable
+                            ProductResponse productResponse = new ProductResponse();
+                            productResponse.set_id(cartItem.getProduct_id());
+                            productResponse.setName("Sản phẩm không còn tồn tại");
+                            productResponse.setStock(0); // Mark as out of stock
+                            productResponse.setQuantity(cartItem.getQuantity());
+                            productResponse.setPrice(0.0); // Set price to 0
+                            productResponse.setImage_url("/soldout.png"); // Use soldout image
+                            return productResponse;
+                        }))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -150,10 +162,9 @@ public class CustomerServiceImpl implements CustomerService {
     public String createOrderFromCart(String customerId, CreateOrderRequest request) {
         User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
-        Cart cart = cartRepository.findByCustomerId(customerId)
-                .orElseThrow(() -> new RuntimeException("No cart found"));
-        if (cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cart is empty. Cannot create order.");
+
+        if (request.getItems().isEmpty()) {
+            throw new RuntimeException("Order items list is empty. Cannot create order.");
         }
 
         // Get shipping address from request or user profile
@@ -249,20 +260,21 @@ public class CustomerServiceImpl implements CustomerService {
             recommendationService.recordProductPurchase(customerId, item.getProduct_id(), item.getQuantity());
         }
 
-        // Remove only ordered items from cart after order creation
-        List<String> orderedProductIds = request.getItems().stream()
-                .map(CartItemRequest::getProductId)
-                .collect(Collectors.toList());
-        cart.getItems().removeIf(item -> orderedProductIds.contains(item.getProduct_id()));
-        cart.setStatus("checked_out");
-        cart.setItems(new ArrayList<>()); // Xóa hết sản phẩm khỏi cart
-        cart.setUpdated_at(LocalDateTime.now());
-        cartRepository.save(cart);
+        // Remove only ordered items from cart after order creation if it's not a 'Buy
+        // Now' purchase
+        if (!request.isBuyNow()) {
+            Cart cart = cartRepository.findByCustomerId(customerId)
+                    .orElseThrow(() -> new RuntimeException("No cart found"));
+            List<String> orderedProductIds = request.getItems().stream()
+                    .map(CartItemRequest::getProductId)
+                    .collect(Collectors.toList());
+            cart.getItems().removeIf(item -> orderedProductIds.contains(item.getProduct_id()));
 
-        // Reset lại cart cho user tiếp tục mua sắm
-        cart.setStatus("active");
-        cart.setUpdated_at(LocalDateTime.now());
-        cartRepository.save(cart);
+            // Update and save the cart status and items after removal
+            cart.setStatus("active"); // Keep cart active for remaining items
+            cart.setUpdated_at(LocalDateTime.now());
+            cartRepository.save(cart); // Ensure the cart is saved after modifications
+        }
 
         return savedOrder.get_id();
     }

@@ -130,11 +130,18 @@ function ShoppingCart({ onPlaceOrder }) {
             fetchVouchersForProduct(product._id);
         });
         setSelectedProductIds(prev => {
-            if (!hasAutoSelected.current && prev.length === 0 && cartProducts.length > 0) {
+            // Filter out products that are now out of stock
+            const newSelectedIds = prev.filter(id => {
+                const productInCart = cartProducts.find(p => p._id === id);
+                return productInCart && productInCart.stock > 0;
+            });
+
+            if (!hasAutoSelected.current && newSelectedIds.length === 0 && cartProducts.length > 0) {
                 hasAutoSelected.current = true;
-                return cartProducts.map(p => p._id);
+                // Only auto-select products that are in stock
+                return cartProducts.filter(p => p.stock > 0).map(p => p._id);
             }
-            return prev.filter(id => cartProducts.some(p => p._id === id));
+            return newSelectedIds;
         });
     }, [cartProducts]);
 
@@ -195,7 +202,7 @@ function ShoppingCart({ onPlaceOrder }) {
         if (voucher) {
             // Check if minimum order value is met
             const canUseVoucher = !voucher.minOrderValue || total >= voucher.minOrderValue;
-            
+
             if (canUseVoucher) {
                 if (voucher.discountType === 'PERCENTAGE') {
                     total = total * (1 - voucher.discountValue / 100);
@@ -279,7 +286,7 @@ function ShoppingCart({ onPlaceOrder }) {
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedProductIds(cartProducts.map(p => p._id));
+            setSelectedProductIds(cartProducts.filter(p => p.stock > 0).map(p => p._id));
         } else {
             setSelectedProductIds([]);
         }
@@ -291,6 +298,9 @@ function ShoppingCart({ onPlaceOrder }) {
 
     return (
         <div className="shopping-cart-container">
+            <button onClick={() => navigate(-1)} className="back-btn">
+                <i className="fas fa-arrow-left"></i> Quay lại
+            </button>
             <h2>Giỏ hàng của bạn</h2>
             {message && <p className="message error">{message}</p>}
 
@@ -300,7 +310,7 @@ function ShoppingCart({ onPlaceOrder }) {
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                             <input
                                 type="checkbox"
-                                checked={selectedProductIds.length === cartProducts.length && cartProducts.length > 0}
+                                checked={selectedProductIds.length === cartProducts.filter(p => p.stock > 0).length && cartProducts.filter(p => p.stock > 0).length > 0}
                                 onChange={handleSelectAll}
                                 style={{ marginRight: 8 }}
                             />
@@ -312,7 +322,7 @@ function ShoppingCart({ onPlaceOrder }) {
                                     type="checkbox"
                                     checked={selectedProductIds.includes(product._id)}
                                     onChange={() => handleProductCheckbox(product._id)}
-                                    style={{ marginRight: 12, marginLeft: 4 }}
+                                    disabled={product.stock === 0} /* Disable if stock is 0 */
                                 />
                                 <div
                                     className="product-thumbnail"
@@ -321,9 +331,11 @@ function ShoppingCart({ onPlaceOrder }) {
                                         backgroundSize: 'cover',
                                         backgroundRepeat: 'no-repeat',
                                         backgroundPosition: 'center',
-                                    } : {}}
-                                >
+                                    } : {}}>
                                     {!product.image_url && <div className="no-image-thumbnail"></div>}
+                                    {product.stock === 0 && (
+                                        <img src="/soldout.png" alt="Sold Out" className="sold-out-overlay" />
+                                    )}
                                 </div>
                                 <div className="cart-item-details">
                                     <h3>{product.name}</h3>
@@ -344,13 +356,13 @@ function ShoppingCart({ onPlaceOrder }) {
                                                         const displayText = voucher.discountType === 'PERCENTAGE'
                                                             ? `Giảm ${voucher.discountValue}%`
                                                             : `Giảm ${voucher.discountValue.toLocaleString('vi-VN')} VND`;
-                                                        const minOrderText = voucher.minOrderValue 
+                                                        const minOrderText = voucher.minOrderValue
                                                             ? ` (Tối thiểu ${voucher.minOrderValue.toLocaleString('vi-VN')} VND)`
                                                             : '';
-                                                        
+
                                                         return (
-                                                            <option 
-                                                                key={voucher.id} 
+                                                            <option
+                                                                key={voucher.id}
                                                                 value={voucher.id}
                                                                 disabled={!canUse}
                                                             >

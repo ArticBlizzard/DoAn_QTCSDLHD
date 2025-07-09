@@ -1,9 +1,10 @@
 package dev.anhhoang.QTCSDLHD.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 import dev.anhhoang.QTCSDLHD.models.BankAccount;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
@@ -21,8 +22,11 @@ public class CreateOrderRequest {
     @NotBlank(message = "Payment method is required")
     private String paymentMethod;
 
-    private BankAccount bankAccount; // Optional, only required for bank payment
+    private BankAccount bankAccount;
 
-    @NotNull(message = "Cart items cannot be null")
+    @NotEmpty(message = "Order items cannot be empty")
     private List<CartItemRequest> items;
+
+    @JsonProperty("isBuyNow")
+    private boolean isBuyNow = false; // Add this field, default to false
 }

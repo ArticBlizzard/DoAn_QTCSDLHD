@@ -93,6 +93,30 @@ function ProductDetail({ onAddToCart }) {
         }
     };
 
+    const handleBuyNowClick = () => {
+        if (!product || product.stock <= 0) {
+            alert('Sản phẩm này hiện không có sẵn hoặc hết hàng.');
+            return;
+        }
+
+        const selectedProductIds = [product._id];
+        // For "Buy Now", we only have one product, and no vouchers are pre-selected
+        // We will pass the quantity of the product here
+        const productForCheckout = {
+            ...product,
+            quantity: quantity,
+        };
+
+        navigate('/checkout', {
+            state: {
+                selectedProductIds: [productForCheckout._id],
+                productsFromBuyNow: [productForCheckout], // Pass the product with quantity directly
+                selectedVouchers: {},
+                isBuyNow: true // Add this flag for Buy Now flow
+            }
+        });
+    };
+
     const handleBackClick = () => {
         navigate(-1); // Go back to the previous page in history
     };
@@ -164,6 +188,13 @@ function ProductDetail({ onAddToCart }) {
                             className="add-to-cart-button"
                         >
                             {addingToCart ? 'Đang thêm...' : 'Thêm vào giỏ hàng'}
+                        </button>
+                        <button
+                            onClick={handleBuyNowClick}
+                            disabled={product.stock <= 0 || quantity > product.stock}
+                            className="buy-now-button"
+                        >
+                            Mua Ngay
                         </button>
                     </div>
                 </div>
