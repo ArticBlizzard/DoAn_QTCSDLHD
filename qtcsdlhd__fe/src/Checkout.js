@@ -15,6 +15,7 @@ function Checkout() {
     const [availableVouchers, setAvailableVouchers] = useState({});
     const [selectedVouchers, setSelectedVouchers] = useState({});
     const [selectedProductIds, setSelectedProductIds] = useState([]);
+    const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -133,6 +134,12 @@ function Checkout() {
 
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
+        
+        // Ngăn chặn nhấn nút nhiều lần
+        if (isPlacingOrder) {
+            return;
+        }
+        
         if (!shippingAddress || !paymentMethod || !fullName || !phoneNumber) {
             setMessage('Vui lòng điền đầy đủ thông tin giao hàng.');
             return;
@@ -145,11 +152,16 @@ function Checkout() {
             setMessage('Vui lòng chọn ít nhất một sản phẩm để đặt hàng.');
             return;
         }
+        
+        setIsPlacingOrder(true);
+        setMessage('Đang xử lý đơn hàng...');
+        
         const orderItems = displayedProducts.map(item => ({
             productId: item._id,
             quantity: parseInt(item.quantity),
             voucherId: selectedVouchers[item._id]
         }));
+        
         try {
             const token = localStorage.getItem('token');
             const response = await fetch('http://localhost:8080/api/customers/orders', {
@@ -170,6 +182,20 @@ function Checkout() {
             });
             if (response.ok) {
                 setMessage('Đặt hàng thành công!');
+                
+                // Dispatch event để thông báo order completion
+                const productIds = displayedProducts.map(p => p._id);
+                const orderCompletionEvent = new CustomEvent('orderCompleted', {
+                    detail: { productIds }
+                });
+                window.dispatchEvent(orderCompletionEvent);
+                
+                // Làm mới giỏ hàng nếu không phải Buy Now
+                if (!location.state?.isBuyNow) {
+                    // Làm mới giỏ hàng từ server
+                    fetchCartProducts();
+                }
+                
                 setTimeout(() => navigate('/'), 2000);
             } else {
                 // Attempt to parse error message from backend
@@ -179,6 +205,8 @@ function Checkout() {
         } catch (error) {
             // Handle network errors or other unexpected errors
             setMessage('Lỗi mạng khi tạo đơn hàng!');
+        } finally {
+            setIsPlacingOrder(false);
         }
     };
 
@@ -338,7 +366,9 @@ function Checkout() {
                                 </div>
                             </div>
                         )}
-                        <button type="submit" className="place-order-btn">Thanh toán</button>
+                        <button type="submit" className="place-order-btn" disabled={isPlacingOrder}>
+                            {isPlacingOrder ? 'Đang xử lý...' : 'Thanh toán'}
+                        </button>
                     </form>
                 </div>
             ) : (

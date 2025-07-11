@@ -222,60 +222,6 @@ function ShoppingCart({ onPlaceOrder }) {
         }, 0);
     };
 
-    const handlePlaceOrder = async (e) => {
-        e.preventDefault();
-        if (!shippingAddress || !paymentMethod || !fullName || !phoneNumber) {
-            displayMessage("Vui lòng điền đầy đủ thông tin giao hàng.", 5000);
-            return;
-        }
-        if (paymentMethod === 'Thẻ ngân hàng' && !bankAccount) {
-            displayMessage("Vui lòng cập nhật thông tin tài khoản ngân hàng trong hồ sơ.", 5000);
-            return;
-        }
-        if (selectedProductIds.length === 0) {
-            displayMessage("Vui lòng chọn ít nhất một sản phẩm để đặt hàng.", 5000);
-            return;
-        }
-        const orderItems = cartProducts.filter(item => selectedProductIds.includes(item._id)).map(item => ({
-            productId: item._id,
-            quantity: parseInt(item.quantity),
-            voucherId: selectedVouchers[item._id]
-        }));
-
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:8080/api/customers/orders', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    fullName,
-                    phoneNumber,
-                    shippingAddress,
-                    paymentMethod,
-                    bankAccount: paymentMethod === 'Thẻ ngân hàng' ? bankAccount : null,
-                    items: orderItems
-                })
-            });
-
-            if (response.ok) {
-                const orderId = await response.text();
-                setCartProducts([]);
-                setShippingAddress('');
-                setPaymentMethod('Tiền mặt');
-                setSelectedVouchers({});
-                onPlaceOrder(orderId);
-            } else {
-                const errorText = await response.text();
-                displayMessage(`Lỗi tạo đơn hàng: ${errorText}`, 5000);
-            }
-        } catch (error) {
-            displayMessage(`Lỗi mạng khi tạo đơn hàng: ${error.message}`, 5000);
-        }
-    };
-
     const handleProductCheckbox = (productId) => {
         setSelectedProductIds(prev =>
             prev.includes(productId)
