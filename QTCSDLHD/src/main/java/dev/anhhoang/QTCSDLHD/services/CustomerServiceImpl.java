@@ -41,6 +41,9 @@ public class CustomerServiceImpl implements CustomerService {
     @Autowired
     private RecommendationService recommendationService;
 
+    @Autowired
+    private OrderStatusCacheService orderStatusCacheService;
+
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
         User user = userRepository.findById(customerId)
@@ -200,9 +203,11 @@ public class CustomerServiceImpl implements CustomerService {
         order.setShipping_address(shippingAddress);
         order.setPayment_method(request.getPaymentMethod());
         order.setBankAccount(request.getBankAccount());
-        order.setStatus("Pending");
+        order.setStatus("PENDING"); // Đổi thành PENDING để khớp với backend
         order.setCreated_at(LocalDateTime.now());
         order.setUpdated_at(LocalDateTime.now());
+        
+        System.out.println("🆕 ORDER CREATED: New order created with status PENDING for customer " + customerId);
 
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
@@ -254,11 +259,32 @@ public class CustomerServiceImpl implements CustomerService {
         }
 
         Order savedOrder = orderRepository.save(order);
+        
+        // Log thông tin đơn hàng vừa tạo
+        System.out.println("✅ ORDER SAVED SUCCESSFULLY:");
+        System.out.println("   Order ID: " + savedOrder.get_id());
+        System.out.println("   Customer ID: " + customerId);
+        System.out.println("   Status: " + savedOrder.getStatus());
+        System.out.println("   Total: " + savedOrder.getTotal());
+        System.out.println("   Items count: " + savedOrder.getItems().size());
+        System.out.println("   Created at: " + savedOrder.getCreated_at());
 
         // Tracking hành vi mua sản phẩm vào Neo4j
         for (OrderItem item : orderItems) {
             recommendationService.recordProductPurchase(customerId, item.getProduct_id(), item.getQuantity());
         }
+        
+        // Cache order status trong Redis ngay khi tạo đơn hàng
+        String shopName = "Unknown Shop";
+        if (!savedOrder.getItems().isEmpty()) {
+            String productId = savedOrder.getItems().get(0).getProduct_id();
+            Optional<Product> productOpt = productRepository.findById(productId);
+            if (productOpt.isPresent()) {
+                shopName = productOpt.get().getShopname();
+            }
+        }
+        orderStatusCacheService.cacheOrderStatus(savedOrder.get_id(), customerId, "PENDING", shopName);
+        System.out.println("📊 ORDER STATUS CACHED: Order " + savedOrder.get_id() + " cached with PENDING status");
 
         // Remove only ordered items from cart after order creation if it's not a 'Buy
         // Now' purchase

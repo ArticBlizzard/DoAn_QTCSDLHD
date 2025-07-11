@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import ProductCatalog from './ProductCatalog';
-import ShoppingCart from './ShoppingCart';
+import EnhancedShoppingCart from './EnhancedShoppingCart';
+import OrderStatus from './OrderStatus';
 import ProductDetail from './ProductDetail';
 import ShopManagement from './ShopManagement';
 import OrderManagement from './OrderManagement';
 import RevenueAnalytics from './RevenueAnalytics';
 import Checkout from './Checkout';
+import { CartProvider } from './contexts/CartContext';
 import './App.css'; // Make sure App.css is imported
 import apiClient from './api/AxiosConfig';
 
@@ -99,7 +101,6 @@ function BecomeSellerForm({ onSellerSuccess }) {
 
 
 function Dashboard({ onLogout }) {
-  const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState(null);
   const [error, setError] = useState('');
   const [showSellerForm, setShowSellerForm] = useState(false);
@@ -384,7 +385,7 @@ function SignUp() {
 }
 
 // --- Main App Component ---
-function App() {
+function AppContent() {
   const [isLoggedInState, setIsLoggedInState] = useState(isLoggedIn());
   const [userId, setUserId] = useState(null);
   const [cart, setCart] = useState([]);
@@ -411,6 +412,39 @@ function App() {
     }
   }, []);
 
+  const displayMessage = useCallback((msg, duration = 3000) => {
+    if (messageTimeoutId) {
+      clearTimeout(messageTimeoutId);
+    }
+    setMessage(msg);
+    const id = setTimeout(() => {
+      setMessage('');
+      setMessageTimeoutId(null);
+    }, duration);
+    setMessageTimeoutId(id);
+  }, [messageTimeoutId]);
+
+  const fetchCartProducts = useCallback(async () => {
+    if (!isLoggedInState) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/api/cart', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data);
+      } else {
+        const errorText = await response.text();
+        displayMessage(`Error fetching cart: ${errorText}`, 5000);
+      }
+    } catch (error) {
+      displayMessage(`Network error fetching cart: ${error.message}`, 5000);
+    }
+  }, [isLoggedInState, displayMessage]);
+
   useEffect(() => {
     if (isLoggedInState) {
       const token = localStorage.getItem('token');
@@ -424,19 +458,7 @@ function App() {
         handleLogout();
       }
     }
-  }, [isLoggedInState, fetchUserProfile]);
-
-  const displayMessage = (msg, duration = 3000) => {
-    if (messageTimeoutId) {
-      clearTimeout(messageTimeoutId);
-    }
-    setMessage(msg);
-    const id = setTimeout(() => {
-      setMessage('');
-      setMessageTimeoutId(null);
-    }, duration);
-    setMessageTimeoutId(id);
-  };
+  }, [isLoggedInState, fetchUserProfile, fetchCartProducts]);
 
   const handleLoginSuccess = () => {
     setIsLoggedInState(true);
@@ -452,27 +474,6 @@ function App() {
     // No need to navigate here, the routes will handle it
   };
 
-  const fetchCartProducts = async () => {
-    if (!isLoggedInState) return;
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/customers/cart', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCart(data);
-      } else {
-        const errorText = await response.text();
-        displayMessage(`Error fetching cart: ${errorText}`, 5000);
-      }
-    } catch (error) {
-      displayMessage(`Network error fetching cart: ${error.message}`, 5000);
-    }
-  };
-
   const handleAddToCart = async (productId, quantity) => {
     if (!isLoggedInState) {
       displayMessage('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.', 5000);
@@ -480,7 +481,7 @@ function App() {
     }
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/customers/cart/add', {
+      const response = await fetch('http://localhost:8080/api/cart/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -489,7 +490,7 @@ function App() {
         body: JSON.stringify({ productId, quantity })
       });
       if (response.ok) {
-        displayMessage('Sản phẩm đã được thêm vào giỏ hàng!');
+        displayMessage('Sản phẩm đã được thêm vào giỏ hàng Redis!');
         fetchCartProducts();
         return true;
       } else {
@@ -500,49 +501,6 @@ function App() {
     } catch (error) {
       displayMessage(`Lỗi mạng khi thêm vào giỏ hàng: ${error.message}`, 5000);
       return false;
-    }
-  };
-
-  const handleUpdateCartQuantity = async (productId, quantity) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/customers/cart/update-quantity/${productId}/${quantity}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        fetchCartProducts();
-        displayMessage('Số lượng sản phẩm đã được cập nhật.');
-      } else {
-        const errorText = await response.text();
-        displayMessage(`Error updating quantity: ${errorText}`, 5000);
-      }
-    } catch (error) {
-      displayMessage(`Network error updating quantity: ${error.message}`, 5000);
-    }
-  };
-
-  const handleRemoveFromCart = async (productId) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        displayMessage('Vui lòng đăng nhập để xóa sản phẩm.');
-        return;
-      }
-      // Use apiClient for the request
-      const response = await apiClient.post('/api/cart/remove', { productId });
-
-      if (response.status === 200) {
-        displayMessage('Đã xóa sản phẩm khỏi giỏ hàng.');
-        fetchCartProducts(); // Refresh cart
-      } else {
-        displayMessage(`Lỗi: ${response.data.message || 'Không thể xóa sản phẩm.'}`);
-      }
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Lỗi mạng khi xóa sản phẩm.';
-      displayMessage(errorMessage);
     }
   };
 
@@ -562,6 +520,7 @@ function App() {
           <nav>
             <Link to="/">Trang chủ</Link>
             {isLoggedInState && <Link to="/cart">Giỏ hàng</Link>}
+            {isLoggedInState && <Link to="/orders">Đơn hàng</Link>}
             {isLoggedInState && <Link to="/dashboard">Hồ sơ</Link>}
             {userProfile && userProfile.roles.includes('ROLE_SELLER') && (
               <>
@@ -598,7 +557,8 @@ function App() {
               }
             />
             <Route path="/product/:productId" element={isLoggedInState ? <ProductDetail onAddToCart={handleAddToCart} /> : <Navigate to="/login" />} />
-            <Route path="/cart" element={isLoggedInState ? <ShoppingCart cartItems={cart} onUpdateQuantity={handleUpdateCartQuantity} onRemoveItem={handleRemoveFromCart} onPlaceOrder={handlePlaceOrder} refreshCart={fetchCartProducts} /> : <Navigate to="/login" />} />
+            <Route path="/cart" element={isLoggedInState ? <EnhancedShoppingCart onPlaceOrder={handlePlaceOrder} /> : <Navigate to="/login" />} />
+            <Route path="/orders" element={isLoggedInState ? <OrderStatus /> : <Navigate to="/login" />} />
             <Route path="/dashboard" element={isLoggedInState ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} />
             <Route path="/shop-management" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <ShopManagement /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />
             <Route path="/order-management" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <OrderManagement /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />
@@ -610,6 +570,14 @@ function App() {
         </main>
       </div>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <CartProvider>
+      <AppContent />
+    </CartProvider>
   );
 }
 

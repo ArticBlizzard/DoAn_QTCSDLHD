@@ -35,6 +35,9 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private OrderStatusCacheService orderStatusCacheService;
+
     @Override
     public List<Order> getOrdersBySeller(String sellerId, String status, String startDate, String endDate) {
         // Lấy user để get shopId từ sellerProfile
@@ -136,10 +139,49 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException("Invalid status: " + newStatus);
         }
         
+        String oldStatus = order.getStatus();
         order.setStatus(newStatus);
         order.setUpdated_at(LocalDateTime.now());
         
-        return orderRepository.save(order);
+        // Lưu và thông báo
+        Order savedOrder = orderRepository.save(order);
+        
+        // Cache order status trong Redis
+        String shopName = "Unknown Shop";
+        if (!order.getItems().isEmpty()) {
+            // Lấy shop name từ product
+            String productId = order.getItems().get(0).getProduct_id();
+            Optional<Product> productOpt = productRepository.findById(productId);
+            if (productOpt.isPresent()) {
+                shopName = productOpt.get().getShopname();
+            }
+        }
+        orderStatusCacheService.cacheOrderStatus(orderId, order.getCustomer_id(), newStatus, shopName);
+        
+        // Log thông báo cho người mua
+        System.out.println("🏪 SHOP UPDATE ORDER STATUS:");
+        System.out.println("   Order ID: " + orderId);
+        System.out.println("   Customer ID: " + order.getCustomer_id());
+        System.out.println("   Status: " + oldStatus + " → " + newStatus);
+        System.out.println("   Updated at: " + order.getUpdated_at());
+        
+        // Thông báo cụ thể cho từng trạng thái
+        switch (newStatus) {
+            case "CONFIRMED":
+                System.out.println("✅ NOTIFICATION TO CUSTOMER: Đơn hàng của bạn đã được xác nhận và đang chuẩn bị!");
+                break;
+            case "SHIPPING":
+                System.out.println("🚚 NOTIFICATION TO CUSTOMER: Đơn hàng đang được vận chuyển!");
+                break;
+            case "DELIVERED":
+                System.out.println("📦 NOTIFICATION TO CUSTOMER: Đơn hàng đã được giao thành công!");
+                break;
+            case "CANCELLED":
+                System.out.println("❌ NOTIFICATION TO CUSTOMER: Đơn hàng đã bị hủy!");
+                break;
+        }
+        
+        return savedOrder;
     }
 
     @Override

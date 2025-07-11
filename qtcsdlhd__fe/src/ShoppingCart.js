@@ -8,8 +8,6 @@ function ShoppingCart({ onPlaceOrder }) {
     const [messageTimeoutId, setMessageTimeoutId] = useState(null);
     const [shippingAddress, setShippingAddress] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('Tiền mặt');
-    const [userAddresses, setUserAddresses] = useState([]);
-    const [selectedAddressIndex, setSelectedAddressIndex] = useState(-1);
     const [fullName, setFullName] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [bankAccount, setBankAccount] = useState(null);
@@ -54,10 +52,6 @@ function ShoppingCart({ onPlaceOrder }) {
                         const primaryAddress = data.buyerProfile.primaryAddress;
                         const formattedAddress = `${primaryAddress.street}, ${primaryAddress.ward}, ${primaryAddress.district}, ${primaryAddress.city}`;
                         setShippingAddress(formattedAddress);
-                    }
-
-                    if (data.buyerProfile.addresses) {
-                        setUserAddresses(data.buyerProfile.addresses);
                     }
                 }
             }
@@ -222,6 +216,7 @@ function ShoppingCart({ onPlaceOrder }) {
         }, 0);
     };
 
+    // eslint-disable-next-line no-unused-vars
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
         if (!shippingAddress || !paymentMethod || !fullName || !phoneNumber) {

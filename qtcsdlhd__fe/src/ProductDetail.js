@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import apiClient from './api/AxiosConfig'; // Import the configured Axios instance
+import { useCart } from './contexts/CartContext'; // Import CartContext
 import './ProductDetail.css'; // Make sure to create this CSS file
 
 function ProductDetail({ onAddToCart }) {
     const navigate = useNavigate();
     const location = useLocation();
     const productId = location.pathname.split('/').pop();
+    const { addToCart } = useCart();
 
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -76,15 +78,17 @@ function ProductDetail({ onAddToCart }) {
 
         try {
             setAddingToCart(true);
-            const success = await onAddToCart(product._id, quantity);
-            if (success) {
-                alert(`Đã thêm ${quantity} sản phẩm ${product.name} vào giỏ hàng!`);
-                // Refresh product stock using apiClient
-                const response = await apiClient.get(`/api/products/${productId}`);
-                if (response.status === 200) {
-                    const updatedProduct = response.data;
-                    setProduct(updatedProduct);
-                }
+            
+            // Use CartContext to add to cart
+            await addToCart(product._id, quantity);
+            
+            alert(`Đã thêm ${quantity} sản phẩm ${product.name} vào giỏ hàng Redis!`);
+            
+            // Refresh product stock using apiClient
+            const response = await apiClient.get(`/api/products/${productId}`);
+            if (response.status === 200) {
+                const updatedProduct = response.data;
+                setProduct(updatedProduct);
             }
         } catch (err) {
             alert('Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại.');
@@ -99,7 +103,6 @@ function ProductDetail({ onAddToCart }) {
             return;
         }
 
-        const selectedProductIds = [product._id];
         // For "Buy Now", we only have one product, and no vouchers are pre-selected
         // We will pass the quantity of the product here
         const productForCheckout = {

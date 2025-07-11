@@ -10,9 +10,7 @@ function ShopManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState('all');
   const [detailProduct, setDetailProduct] = useState(null);
-  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortField, setSortField] = useState('');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -39,7 +37,6 @@ function ShopManagement() {
 
   useEffect(() => {
     fetchProducts();
-    fetchCategories();
     fetchVouchers();
   }, []);
 
@@ -58,17 +55,6 @@ function ShopManagement() {
       setProducts(data);
     } catch (err) {
       alert('Không thể tải sản phẩm');
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch('http://localhost:8080/api/products/categories');
-      if (!res.ok) throw new Error('Network response was not ok');
-      const data = await res.json();
-      setCategories(data);
-    } catch (err) {
-      console.error('Failed to fetch categories', err);
     }
   };
 
@@ -102,11 +88,9 @@ function ShopManagement() {
 
   // Lọc sản phẩm theo tab và category
   const filteredProducts = products.filter(p => {
-    let matchTab = true;
-    if (tab === 'all') matchTab = true;
     if (selectedCategory !== 'all' && p.category !== selectedCategory) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return matchTab;
+    return true;
   });
 
   // Sắp xếp sản phẩm theo trường được chọn

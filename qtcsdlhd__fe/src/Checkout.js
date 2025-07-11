@@ -34,7 +34,7 @@ function Checkout() {
         if (location.state && location.state.selectedVouchers) {
             setSelectedVouchers(location.state.selectedVouchers);
         }
-    }, []);
+    }, [location.state]);
 
     const fetchUserProfile = async () => {
         try {
