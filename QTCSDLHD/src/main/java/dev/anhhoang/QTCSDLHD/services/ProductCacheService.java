@@ -170,4 +170,39 @@ public class ProductCacheService {
         String cacheKey = PRODUCT_CACHE_KEY + productId;
         return redisTemplate.hasKey(cacheKey);
     }
+    
+    /**
+     * Cập nhật stock của sản phẩm trong cache
+     */
+    public void updateProductStockInCache(String productId, int newStock) {
+        String cacheKey = PRODUCT_CACHE_KEY + productId;
+        
+        try {
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            
+            if (cached != null) {
+                ProductResponse product = null;
+                
+                // Nếu cached là LinkedHashMap, convert sang ProductResponse
+                if (cached instanceof java.util.LinkedHashMap) {
+                    @SuppressWarnings("unchecked")
+                    java.util.LinkedHashMap<String, Object> map = (java.util.LinkedHashMap<String, Object>) cached;
+                    product = convertMapToProductResponse(map);
+                } else {
+                    product = (ProductResponse) cached;
+                }
+                
+                if (product != null) {
+                    // Cập nhật stock mới
+                    product.setStock(newStock);
+                    
+                    // Lưu lại vào cache
+                    redisTemplate.opsForValue().set(cacheKey, product, CACHE_EXPIRATION_HOURS, TimeUnit.HOURS);
+                    System.out.println("Updated stock for product " + productId + " in product cache: " + newStock);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error updating product stock in cache: " + e.getMessage());
+        }
+    }
 }

@@ -18,10 +18,15 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
 public class CustomerServiceImpl implements CustomerService {
+
+    // Cache để theo dõi các order request gần đây
+    private final ConcurrentHashMap<String, Long> recentOrderRequests = new ConcurrentHashMap<>();
+    private static final long ORDER_REQUEST_COOLDOWN_MS = 5000; // 5 giây
 
     @Autowired
     private UserRepository userRepository;
@@ -43,6 +48,9 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Autowired
     private CartCacheService cartCacheService;
+
+    @Autowired
+    private ProductCacheService productCacheService;
 
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
@@ -135,9 +143,6 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public List<ProductResponse> getCartProducts(String customerId) {
-        User user = userRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
-        
         // Thử lấy từ cache trước
         List<CartCacheService.CartItemCache> cachedItems = cartCacheService.getAllCartItemsFromCache(customerId);
         
@@ -208,24 +213,33 @@ public class CustomerServiceImpl implements CustomerService {
             throw new RuntimeException("Order items list is empty. Cannot create order.");
         }
 
-        // Get shipping address from request or user profile
-        String shippingAddress;
-        if (!StringUtils.hasText(request.getShippingAddress())) {
-            // If no address provided, get from user profile
-            if (user.getBuyerProfile() == null ||
-                    user.getBuyerProfile().getPrimaryAddress() == null) {
-                throw new RuntimeException("No shipping address found in profile. Please provide a shipping address.");
-            }
-
-            Address primaryAddress = user.getBuyerProfile().getPrimaryAddress();
-            shippingAddress = String.format("%s, %s, %s, %s",
-                    primaryAddress.getStreet(),
-                    primaryAddress.getWard(),
-                    primaryAddress.getDistrict(),
-                    primaryAddress.getCity());
-        } else {
-            shippingAddress = request.getShippingAddress();
+        // Kiểm tra xem có đang trong thời gian chờ giữa các yêu cầu đặt hàng hay không
+        Long lastRequestTime = recentOrderRequests.get(customerId);
+        long currentTime = System.currentTimeMillis();
+        if (lastRequestTime != null && (currentTime - lastRequestTime) < ORDER_REQUEST_COOLDOWN_MS) {
+            throw new RuntimeException("Vui lòng đợi trước khi thực hiện yêu cầu đặt hàng tiếp theo.");
         }
+        recentOrderRequests.put(customerId, currentTime);
+
+        try {
+            // Get shipping address from request or user profile
+            String shippingAddress;
+            if (!StringUtils.hasText(request.getShippingAddress())) {
+                // If no address provided, get from user profile
+                if (user.getBuyerProfile() == null ||
+                        user.getBuyerProfile().getPrimaryAddress() == null) {
+                    throw new RuntimeException("No shipping address found in profile. Please provide a shipping address.");
+                }
+
+                Address primaryAddress = user.getBuyerProfile().getPrimaryAddress();
+                shippingAddress = String.format("%s, %s, %s, %s",
+                        primaryAddress.getStreet(),
+                        primaryAddress.getWard(),
+                        primaryAddress.getDistrict(),
+                        primaryAddress.getCity());
+            } else {
+                shippingAddress = request.getShippingAddress();
+            }
 
         // Validate bank account for bank payment
         if ("Thẻ ngân hàng".equals(request.getPaymentMethod())) {
@@ -282,8 +296,13 @@ public class CustomerServiceImpl implements CustomerService {
             total = total.add(itemPrice.multiply(BigDecimal.valueOf(cartItemRequest.getQuantity())));
 
             // Deduct stock
-            product.setStock(product.getStock() - cartItemRequest.getQuantity());
+            int newStock = product.getStock() - cartItemRequest.getQuantity();
+            product.setStock(newStock);
             productRepository.save(product);
+            
+            // Update product stock in all caches
+            productCacheService.updateProductStockInCache(product.get_id(), newStock);
+            cartCacheService.updateProductStockInCache(product.get_id(), newStock);
         }
 
         order.setItems(orderItems);
@@ -315,9 +334,21 @@ public class CustomerServiceImpl implements CustomerService {
             cart.setStatus("active"); // Keep cart active for remaining items
             cart.setUpdated_at(LocalDateTime.now());
             cartRepository.save(cart); // Ensure the cart is saved after modifications
+            
+            // Remove ordered items from cache as well
+            cartCacheService.removeOrderedItemsFromCache(customerId, orderedProductIds);
         }
 
+        // Xóa cache request sau khi order thành công
+        recentOrderRequests.remove(customerId);
+
         return savedOrder.get_id();
+        
+        } catch (Exception e) {
+            // Xóa cache request khi có lỗi để không làm người dùng phải đợi lâu
+            recentOrderRequests.remove(customerId);
+            throw e;
+        }
     }
 
     // Assuming UserProfileResponse is an existing DTO for user information

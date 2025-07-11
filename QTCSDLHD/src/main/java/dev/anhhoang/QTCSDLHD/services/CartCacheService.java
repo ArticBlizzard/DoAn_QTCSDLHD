@@ -232,6 +232,79 @@ public class CartCacheService {
     }
     
     /**
+     * Xóa cache cho các sản phẩm đã thanh toán
+     */
+    public void removeOrderedItemsFromCache(String customerId, List<String> productIds) {
+        for (String productId : productIds) {
+            String cartItemKey = CART_ITEMS_KEY + customerId + ":" + productId;
+            redisTemplate.delete(cartItemKey);
+            System.out.println("Removed ordered item from cache: " + productId + " for customer: " + customerId);
+        }
+    }
+    
+    /**
+     * Cập nhật số lượng tồn kho của sản phẩm trong cache giỏ hàng
+     * Được gọi sau khi stock sản phẩm thay đổi (sau khi mua hàng)
+     */
+    public void updateProductStockInCache(String productId, int newStock) {
+        try {
+            // Lấy tất cả keys có pattern cart_items:*:{productId}
+            String pattern = CART_ITEMS_KEY + "*:" + productId;
+            var keys = redisTemplate.keys(pattern);
+            
+            if (keys != null && !keys.isEmpty()) {
+                for (String key : keys) {
+                    Object cached = redisTemplate.opsForValue().get(key);
+                    if (cached != null) {
+                        CartItemCache cartItemCache = null;
+                        
+                        // Xử lý trường hợp cached là LinkedHashMap
+                        if (cached instanceof java.util.LinkedHashMap) {
+                            @SuppressWarnings("unchecked")
+                            java.util.LinkedHashMap<String, Object> map = (java.util.LinkedHashMap<String, Object>) cached;
+                            cartItemCache = convertMapToCartItemCache(map);
+                        } else if (cached instanceof CartItemCache) {
+                            cartItemCache = (CartItemCache) cached;
+                        }
+                        
+                        if (cartItemCache != null && cartItemCache.getProduct() != null) {
+                            // Cập nhật stock mới
+                            cartItemCache.getProduct().setStock(newStock);
+                            cartItemCache.setTimestamp(System.currentTimeMillis());
+                            
+                            // Lưu lại vào cache
+                            redisTemplate.opsForValue().set(key, cartItemCache, CACHE_EXPIRATION_HOURS, TimeUnit.HOURS);
+                            System.out.println("Updated stock for product " + productId + " in cache: " + newStock);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error updating product stock in cache: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Convert LinkedHashMap to CartItemCache
+     */
+    private CartItemCache convertMapToCartItemCache(java.util.LinkedHashMap<String, Object> map) {
+        CartItemCache cartItemCache = new CartItemCache();
+        cartItemCache.setProductId((String) map.get("productId"));
+        cartItemCache.setQuantity(((Number) map.get("quantity")).intValue());
+        cartItemCache.setTimestamp(((Number) map.get("timestamp")).longValue());
+        
+        // Convert product object
+        if (map.get("product") instanceof java.util.LinkedHashMap) {
+            @SuppressWarnings("unchecked")
+            java.util.LinkedHashMap<String, Object> productMap = (java.util.LinkedHashMap<String, Object>) map.get("product");
+            ProductResponse product = convertMapToProductResponse(productMap);
+            cartItemCache.setProduct(product);
+        }
+        
+        return cartItemCache;
+    }
+
+    /**
      * Inner class để lưu thông tin cache của cart item
      */
     public static class CartItemCache {

@@ -90,6 +90,24 @@ function ProductCatalog({ onAddToCart, userId, searchTerm, setSearchTerm, sortOp
         // eslint-disable-next-line
     }, [userId, searchTerm, sortOption, isSearching]);
 
+    // Listen for order completion to refresh product list
+    useEffect(() => {
+        const handleOrderCompletion = () => {
+            // Refresh product list after order completion
+            if (isSearching) {
+                fetchProducts(searchTerm, '', sortOption, false);
+            } else {
+                fetchProducts('', '', sortOption, !!userId);
+            }
+        };
+        
+        window.addEventListener('orderCompleted', handleOrderCompletion);
+        
+        return () => {
+            window.removeEventListener('orderCompleted', handleOrderCompletion);
+        };
+    }, [isSearching, searchTerm, sortOption, userId]);
+
     const handleSearchTermChange = (e) => {
         setSearchTerm(e.target.value);
         setIsSearching(true);

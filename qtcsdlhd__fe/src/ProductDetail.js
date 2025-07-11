@@ -121,6 +121,34 @@ function ProductDetail({ onAddToCart }) {
         navigate(-1); // Go back to the previous page in history
     };
 
+    const refreshProductData = async () => {
+        try {
+            const response = await apiClient.get(`/api/products/${productId}`);
+            if (response.status === 200) {
+                const updatedProduct = response.data;
+                setProduct(updatedProduct);
+                console.log('Product data refreshed after stock change');
+            }
+        } catch (error) {
+            console.error('Error refreshing product data:', error);
+        }
+    };
+
+    // Listen for order completion to refresh product data
+    useEffect(() => {
+        const handleOrderCompletion = (event) => {
+            if (event.detail && event.detail.productIds && event.detail.productIds.includes(productId)) {
+                refreshProductData();
+            }
+        };
+        
+        window.addEventListener('orderCompleted', handleOrderCompletion);
+        
+        return () => {
+            window.removeEventListener('orderCompleted', handleOrderCompletion);
+        };
+    }, [productId]);
+
     if (loading) {
         return (
             <div className="product-detail-container loading">
@@ -241,4 +269,4 @@ function ProductDetail({ onAddToCart }) {
     );
 }
 
-export default ProductDetail; 
+export default ProductDetail;
