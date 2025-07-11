@@ -24,11 +24,11 @@ function OrderManagement() {
     ];
 
     const statusColors = {
-        'PENDING': 'status-pending',
-        'CONFIRMED': 'status-confirmed', 
-        'SHIPPING': 'status-shipping',
-        'DELIVERED': 'status-delivered',
-        'CANCELLED': 'status-cancelled'
+        'PENDING': 'status-badge status-pending',
+        'CONFIRMED': 'status-badge status-confirmed',
+        'SHIPPING': 'status-badge status-shipping',
+        'DELIVERED': 'status-badge status-delivered',
+        'CANCELLED': 'status-badge status-cancelled'
     };
 
     // Helper function để get status display (case-insensitive)
@@ -41,9 +41,9 @@ function OrderManagement() {
 
     // Helper function để get status color class (case-insensitive)
     const getStatusColorClass = (status) => {
-        if (!status) return '';
+        if (!status) return 'status-badge';
         const upperStatus = status.toUpperCase();
-        return statusColors[upperStatus] || 'status-default';
+        return statusColors[upperStatus] || 'status-badge status-default';
     };
 
     const fetchOrders = useCallback(async () => {
@@ -159,81 +159,78 @@ function OrderManagement() {
     };
 
     return (
-        <div className="order-management">
-            <div className="order-header">
-                <div className="header-top">
-                    <button 
-                        className="back-to-shop-btn"
-                        onClick={() => navigate('/shop-management')}
-                        title="Trở về trang quản lý shop"
-                    >
-                        ← Trở về Quản lý Shop
-                    </button>
-                    <h2>Quản lý Đơn hàng</h2>
-                </div>
-                
-                {/* Statistics Cards */}
-                <div className="statistics-cards">
-                    <div className="stat-card">
-                        <h4>Tổng đơn hàng</h4>
-                        <span className="stat-number">{statistics.totalOrders || 0}</span>
-                    </div>
-                    <div className="stat-card stat-card-success">
-                        <h4>Đơn đã hoàn thành</h4>
-                        <span className="stat-number">{statistics.completedOrders || 0}</span>
-                    </div>
-                    <div className="stat-card stat-card-recent">
-                        <h4>Đơn hàng gần đây</h4>
-                        <span className="stat-number">{statistics.recentOrders || 0}</span>
-                    </div>
-                    <div className="stat-card stat-card-revenue">
-                        <h4>Tổng doanh thu</h4>
-                        <span className="stat-number">{formatCurrency(statistics.totalRevenue || 0)}</span>
-                        <small className="revenue-note">Từ đơn đã giao</small>
-                    </div>
-                </div>
 
-                {/* Filters */}
-                <div className="order-filters">
-                    <div className="filter-group">
-                        <label>Trạng thái:</label>
-                        <select 
-                            value={statusFilter} 
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                        >
-                            {statusOptions.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    
-                    <div className="filter-group">
-                        <label>Từ ngày:</label>
-                        <input 
-                            type="date" 
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                        />
-                    </div>
-                    
-                    <div className="filter-group">
-                        <label>Đến ngày:</label>
-                        <input 
-                            type="date" 
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                        />
-                    </div>
-                    
-                    <button className="filter-reset-btn" onClick={() => {
-                        setStatusFilter('');
-                        setDateRange({ start: '', end: '' });
-                    }}>
-                        Đặt lại
-                    </button>
+        <div className="order-management">
+            {/* Header: Back button & Title */}
+            <div className="om-header-row">
+                <button 
+                    className="back-to-shop-btn"
+                    onClick={() => navigate('/shop-management')}
+                    title="Trở về trang quản lý shop"
+                >
+                    ← Trở về Quản lý Shop
+                </button>
+                <h2 className="om-title">Quản lý Đơn hàng</h2>
+            </div>
+
+            {/* Statistics Cards */}
+            <div className="statistics-cards">
+                <div className="stat-card">
+                    <h4>Tổng đơn hàng</h4>
+                    <span className="stat-number">{statistics.totalOrders || 0}</span>
                 </div>
+                <div className="stat-card stat-card-success">
+                    <h4>Đơn đã hoàn thành</h4>
+                    <span className="stat-number">{statistics.completedOrders || 0}</span>
+                </div>
+                <div className="stat-card stat-card-recent">
+                    <h4>Đơn hàng gần đây</h4>
+                    <span className="stat-number">{statistics.recentOrders || 0}</span>
+                </div>
+                <div className="stat-card stat-card-revenue">
+                    <h4>Tổng doanh thu</h4>
+                    <span className="stat-number">{formatCurrency(statistics.totalRevenue || 0)}</span>
+                    <small className="revenue-note">Từ đơn đã giao</small>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="order-filters">
+                <div className="filter-group">
+                    <label>Trạng thái:</label>
+                    <select 
+                        value={statusFilter} 
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        {statusOptions.map(option => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div className="filter-group">
+                    <label>Từ ngày:</label>
+                    <input 
+                        type="date" 
+                        value={dateRange.start}
+                        onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                    />
+                </div>
+                <div className="filter-group">
+                    <label>Đến ngày:</label>
+                    <input 
+                        type="date" 
+                        value={dateRange.end}
+                        onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                    />
+                </div>
+                <button className="filter-reset-btn" onClick={() => {
+                    setStatusFilter('');
+                    setDateRange({ start: '', end: '' });
+                }}>
+                    Đặt lại
+                </button>
             </div>
 
             {/* Error/Success Messages */}
@@ -279,7 +276,7 @@ function OrderManagement() {
                                         <td>{formatDate(order.created_at)}</td>
                                         <td className="order-total">{formatCurrency(order.total)}</td>
                                         <td>
-                                            <span className={`status-badge ${getStatusColorClass(order.status)}`}>
+                                            <span className={getStatusColorClass(order.status)}>
                                                 {getStatusDisplay(order.status)}
                                             </span>
                                         </td>
@@ -338,7 +335,7 @@ function OrderManagement() {
                                     <h4>Thông tin đơn hàng</h4>
                                     <p><strong>Ngày đặt:</strong> {formatDate(selectedOrder.created_at)}</p>
                                     <p><strong>Trạng thái:</strong> 
-                                        <span className={`status-badge ${statusColors[selectedOrder.status]}`}>
+                                        <span className={getStatusColorClass(selectedOrder.status)}>
                                             {statusOptions.find(s => s.value === selectedOrder.status)?.label}
                                         </span>
                                     </p>
