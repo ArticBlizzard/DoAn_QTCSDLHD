@@ -7,6 +7,8 @@ import ShopManagement from './ShopManagement';
 import OrderManagement from './OrderManagement';
 import RevenueAnalytics from './RevenueAnalytics';
 import Checkout from './Checkout';
+import CustomerOrders from './CustomerOrders';
+import CustomerOrderDetail from './CustomerOrderDetail';
 import './App.css'; // Make sure App.css is imported
 import apiClient from './api/AxiosConfig';
 
@@ -276,6 +278,17 @@ function Dashboard({ onLogout }) {
           )}
         </div>
       )}
+
+      {/* Quick Actions */}
+      <div className="dashboard-actions">
+        <button 
+          onClick={() => navigate('/customer-orders')} 
+          className="submit-btn secondary-btn"
+          style={{ marginRight: '10px' }}
+        >
+          📦 Xem đơn hàng của tôi
+        </button>
+      </div>
 
       {!isSeller && !showSellerForm && (<button onClick={() => setShowSellerForm(true)} className="submit-btn">Trở thành Người bán</button>)}
       {showSellerForm && <BecomeSellerForm onSellerSuccess={fetchUserProfile} />}
@@ -562,6 +575,7 @@ function App() {
           <nav>
             <Link to="/">Trang chủ</Link>
             {isLoggedInState && <Link to="/cart">Giỏ hàng</Link>}
+            {isLoggedInState && <Link to="/customer-orders">Đơn hàng của tôi</Link>}
             {isLoggedInState && <Link to="/dashboard">Hồ sơ</Link>}
             {userProfile && userProfile.roles.includes('ROLE_SELLER') && (
               <>
@@ -600,6 +614,8 @@ function App() {
             <Route path="/product/:productId" element={isLoggedInState ? <ProductDetail onAddToCart={handleAddToCart} /> : <Navigate to="/login" />} />
             <Route path="/cart" element={isLoggedInState ? <ShoppingCart cartItems={cart} onUpdateQuantity={handleUpdateCartQuantity} onRemoveItem={handleRemoveFromCart} onPlaceOrder={handlePlaceOrder} refreshCart={fetchCartProducts} /> : <Navigate to="/login" />} />
             <Route path="/dashboard" element={isLoggedInState ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} />
+            <Route path="/customer-orders" element={isLoggedInState ? <CustomerOrders /> : <Navigate to="/login" />} />
+            <Route path="/customer-orders/:orderId" element={isLoggedInState ? <CustomerOrderDetail /> : <Navigate to="/login" />} />
             <Route path="/shop-management" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <ShopManagement /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />
             <Route path="/order-management" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <OrderManagement /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />
             <Route path="/revenue-analytics" element={isLoggedInState ? (userProfile && userProfile.roles.includes('ROLE_SELLER') ? <RevenueAnalytics /> : <Navigate to="/dashboard" />) : <Navigate to="/login" />} />

@@ -16,7 +16,10 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import dev.anhhoang.QTCSDLHD.dto.OrderDTO;
+import dev.anhhoang.QTCSDLHD.dto.OrderItemDTO;
 import dev.anhhoang.QTCSDLHD.models.Order;
+import dev.anhhoang.QTCSDLHD.models.OrderItem;
 import dev.anhhoang.QTCSDLHD.models.Product;
 import dev.anhhoang.QTCSDLHD.models.User;
 import dev.anhhoang.QTCSDLHD.repositories.OrderRepository;
@@ -34,6 +37,33 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Override
+    public boolean cancelOrderByCustomer(String orderId, String customerId) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            return false;
+        }
+        Order order = orderOpt.get();
+        // Check ownership and status
+        String status = order.getStatus();
+        if (!order.getCustomer_id().equals(customerId) || !("PENDING".equalsIgnoreCase(status) || "CONFIRMED".equalsIgnoreCase(status))) {
+            return false;
+        }
+        // Restore stock for each item
+        for (OrderItem item : order.getItems()) {
+            Optional<Product> productOpt = productRepository.findById(item.getProduct_id());
+            if (productOpt.isPresent()) {
+                Product product = productOpt.get();
+                product.setStock(product.getStock() + item.getQuantity());
+                productRepository.save(product);
+            }
+        }
+        // Update order status
+        order.setStatus("CANCELLED");
+        orderRepository.save(order);
+        return true;
+    }
 
     @Override
     public List<Order> getOrdersBySeller(String sellerId, String status, String startDate, String endDate) {
@@ -129,16 +159,28 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             return null;
         }
-        
+
         // Validate status transition (có thể thêm business logic ở đây)
         List<String> validStatuses = Arrays.asList("PENDING", "CONFIRMED", "SHIPPING", "DELIVERED", "CANCELLED");
         if (!validStatuses.contains(newStatus)) {
             throw new IllegalArgumentException("Invalid status: " + newStatus);
         }
-        
+
+        // Nếu chuyển sang CANCELLED thì cộng lại số lượng sản phẩm
+        if ("CANCELLED".equalsIgnoreCase(newStatus) && !"CANCELLED".equalsIgnoreCase(order.getStatus())) {
+            for (OrderItem item : order.getItems()) {
+                Optional<Product> productOpt = productRepository.findById(item.getProduct_id());
+                if (productOpt.isPresent()) {
+                    Product product = productOpt.get();
+                    product.setStock(product.getStock() + item.getQuantity());
+                    productRepository.save(product);
+                }
+            }
+        }
+
         order.setStatus(newStatus);
         order.setUpdated_at(LocalDateTime.now());
-        
+
         return orderRepository.save(order);
     }
 
@@ -428,5 +470,119 @@ public class OrderServiceImpl implements OrderService {
         }
         
         return chartData;
+    }
+    
+    @Override
+    public List<OrderDTO> getOrdersByCustomer(String customerId, String status) {
+        List<Order> customerOrders = orderRepository.findByCustomer_id(customerId);
+
+        if (status != null && !status.isEmpty() && !"ALL".equalsIgnoreCase(status)) {
+            customerOrders = customerOrders.stream()
+                    .filter(order -> status.equalsIgnoreCase(order.getStatus()))
+                    .collect(Collectors.toList());
+        }
+
+        List<String> allProductIds = customerOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .map(OrderItem::getProduct_id)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<String, Product> productMap = productRepository.findAllById(allProductIds)
+                .stream()
+                .collect(Collectors.toMap(Product::get_id, p -> p));
+
+        List<OrderDTO> orderDTOs = new ArrayList<>();
+        for (Order order : customerOrders) {
+            OrderDTO dto = new OrderDTO();
+            dto.set_id(order.get_id());
+            dto.setCustomer_id(order.getCustomer_id());
+            dto.setFullName(order.getFullName());
+            dto.setPhoneNumber(order.getPhoneNumber());
+            dto.setShipping_address(order.getShipping_address());
+            dto.setPayment_method(order.getPayment_method());
+            dto.setStatus(order.getStatus() != null ? order.getStatus().toUpperCase() : null);
+            dto.setTotal(order.getTotal());
+            dto.setCreated_at(order.getCreated_at());
+            dto.setUpdated_at(order.getUpdated_at());
+
+            List<OrderItemDTO> itemDTOs = new ArrayList<>();
+            for (OrderItem item : order.getItems()) {
+                OrderItemDTO itemDTO = new OrderItemDTO();
+                itemDTO.setProduct_id(item.getProduct_id());
+                itemDTO.setQuantity(item.getQuantity());
+                itemDTO.setPrice(item.getPrice());
+                itemDTO.setVoucherId(item.getVoucherId());
+                Product product = productMap.get(item.getProduct_id());
+                if (product != null) {
+                    itemDTO.setProduct_name(product.getName());
+                    itemDTO.setImage_url(product.getImage_url());
+                }
+                itemDTOs.add(itemDTO);
+            }
+            dto.setItems(itemDTOs);
+            orderDTOs.add(dto);
+        }
+
+        orderDTOs.sort((o1, o2) -> o2.getCreated_at().compareTo(o1.getCreated_at()));
+        return orderDTOs;
+    }
+    
+    @Override
+    public OrderDTO getOrderDetailForCustomer(String orderId, String customerId) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            return null;
+        }
+        Order order = orderOpt.get();
+        if (!customerId.equals(order.getCustomer_id())) {
+            return null;
+        }
+        // Build OrderDTO giống như getOrdersByCustomer
+        OrderDTO dto = new OrderDTO();
+        dto.set_id(order.get_id());
+        dto.setCustomer_id(order.getCustomer_id());
+        dto.setFullName(order.getFullName());
+        dto.setPhoneNumber(order.getPhoneNumber());
+        dto.setShipping_address(order.getShipping_address());
+        dto.setPayment_method(order.getPayment_method());
+        dto.setStatus(order.getStatus() != null ? order.getStatus().toUpperCase() : null);
+        dto.setTotal(order.getTotal());
+        dto.setCreated_at(order.getCreated_at());
+        dto.setUpdated_at(order.getUpdated_at());
+        // Map items to OrderItemDTO, lấy product_name, image_url
+        List<OrderItemDTO> itemDTOs = new ArrayList<>();
+        if (order.getItems() != null) {
+            for (var item : order.getItems()) {
+                OrderItemDTO itemDTO = new OrderItemDTO();
+                itemDTO.setProduct_id(item.getProduct_id());
+                itemDTO.setQuantity(item.getQuantity());
+                itemDTO.setPrice(item.getPrice());
+                itemDTO.setVoucherId(item.getVoucherId());
+                // Lấy thông tin sản phẩm
+                Optional<Product> productOpt = productRepository.findById(item.getProduct_id());
+                if (productOpt.isPresent()) {
+                    Product product = productOpt.get();
+                    itemDTO.setProduct_name(product.getName());
+                    itemDTO.setImage_url(product.getImage_url());
+                }
+                itemDTOs.add(itemDTO);
+            }
+        }
+        dto.setItems(itemDTOs);
+        return dto;
+    }
+
+    @Override
+    public boolean confirmOrderDelivered(String orderId, String customerId) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) return false;
+        Order order = orderOpt.get();
+        if (!customerId.equals(order.getCustomer_id())) return false;
+        if (!"SHIPPING".equalsIgnoreCase(order.getStatus())) return false;
+        order.setStatus("DELIVERED");
+        order.setUpdated_at(LocalDateTime.now());
+        orderRepository.save(order);
+        return true;
     }
 }
