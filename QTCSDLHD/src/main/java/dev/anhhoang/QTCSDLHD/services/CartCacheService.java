@@ -49,33 +49,41 @@ public class CartCacheService {
      */
     public CartItemCache getCartItemFromCache(String customerId, String productId) {
         String cartItemKey = CART_ITEMS_KEY + customerId + ":" + productId;
-        Object cached = redisTemplate.opsForValue().get(cartItemKey);
         
-        if (cached == null) {
-            return null;
-        }
-        
-        // Nếu cached là LinkedHashMap, convert sang CartItemCache
-        if (cached instanceof java.util.LinkedHashMap) {
-            @SuppressWarnings("unchecked")
-            java.util.LinkedHashMap<String, Object> map = (java.util.LinkedHashMap<String, Object>) cached;
-            CartItemCache cartItemCache = new CartItemCache();
-            cartItemCache.setProductId((String) map.get("productId"));
-            cartItemCache.setQuantity(((Number) map.get("quantity")).intValue());
-            cartItemCache.setTimestamp(((Number) map.get("timestamp")).longValue());
+        try {
+            Object cached = redisTemplate.opsForValue().get(cartItemKey);
             
-            // Handle product object
-            if (map.get("product") instanceof java.util.LinkedHashMap) {
-                @SuppressWarnings("unchecked")
-                java.util.LinkedHashMap<String, Object> productMap = (java.util.LinkedHashMap<String, Object>) map.get("product");
-                ProductResponse product = convertMapToProductResponse(productMap);
-                cartItemCache.setProduct(product);
+            if (cached == null) {
+                return null;
             }
             
-            return cartItemCache;
+            // Nếu cached là LinkedHashMap, convert sang CartItemCache
+            if (cached instanceof java.util.LinkedHashMap) {
+                @SuppressWarnings("unchecked")
+                java.util.LinkedHashMap<String, Object> map = (java.util.LinkedHashMap<String, Object>) cached;
+                CartItemCache cartItemCache = new CartItemCache();
+                cartItemCache.setProductId((String) map.get("productId"));
+                cartItemCache.setQuantity(((Number) map.get("quantity")).intValue());
+                cartItemCache.setTimestamp(((Number) map.get("timestamp")).longValue());
+                
+                // Handle product object
+                if (map.get("product") instanceof java.util.LinkedHashMap) {
+                    @SuppressWarnings("unchecked")
+                    java.util.LinkedHashMap<String, Object> productMap = (java.util.LinkedHashMap<String, Object>) map.get("product");
+                    ProductResponse product = convertMapToProductResponse(productMap);
+                    cartItemCache.setProduct(product);
+                }
+                
+                return cartItemCache;
+            }
+            
+            return (CartItemCache) cached;
+        } catch (Exception e) {
+            System.err.println("Error retrieving cart item from cache for key: " + cartItemKey + " - " + e.getMessage());
+            // Xóa cache item bị lỗi
+            redisTemplate.delete(cartItemKey);
+            return null;
         }
-        
-        return (CartItemCache) cached;
     }
     
     /**
@@ -106,32 +114,39 @@ public class CartCacheService {
         String pattern = CART_ITEMS_KEY + customerId + ":*";
         return redisTemplate.keys(pattern).stream()
                 .map(key -> {
-                    Object cached = redisTemplate.opsForValue().get(key);
-                    if (cached == null) {
-                        return null;
-                    }
-                    
-                    // Nếu cached là LinkedHashMap, convert sang CartItemCache
-                    if (cached instanceof java.util.LinkedHashMap) {
-                        @SuppressWarnings("unchecked")
-                        java.util.LinkedHashMap<String, Object> map = (java.util.LinkedHashMap<String, Object>) cached;
-                        CartItemCache cartItemCache = new CartItemCache();
-                        cartItemCache.setProductId((String) map.get("productId"));
-                        cartItemCache.setQuantity(((Number) map.get("quantity")).intValue());
-                        cartItemCache.setTimestamp(((Number) map.get("timestamp")).longValue());
-                        
-                        // Handle product object
-                        if (map.get("product") instanceof java.util.LinkedHashMap) {
-                            @SuppressWarnings("unchecked")
-                            java.util.LinkedHashMap<String, Object> productMap = (java.util.LinkedHashMap<String, Object>) map.get("product");
-                            ProductResponse product = convertMapToProductResponse(productMap);
-                            cartItemCache.setProduct(product);
+                    try {
+                        Object cached = redisTemplate.opsForValue().get(key);
+                        if (cached == null) {
+                            return null;
                         }
                         
-                        return cartItemCache;
+                        // Nếu cached là LinkedHashMap, convert sang CartItemCache
+                        if (cached instanceof java.util.LinkedHashMap) {
+                            @SuppressWarnings("unchecked")
+                            java.util.LinkedHashMap<String, Object> map = (java.util.LinkedHashMap<String, Object>) cached;
+                            CartItemCache cartItemCache = new CartItemCache();
+                            cartItemCache.setProductId((String) map.get("productId"));
+                            cartItemCache.setQuantity(((Number) map.get("quantity")).intValue());
+                            cartItemCache.setTimestamp(((Number) map.get("timestamp")).longValue());
+                            
+                            // Handle product object
+                            if (map.get("product") instanceof java.util.LinkedHashMap) {
+                                @SuppressWarnings("unchecked")
+                                java.util.LinkedHashMap<String, Object> productMap = (java.util.LinkedHashMap<String, Object>) map.get("product");
+                                ProductResponse product = convertMapToProductResponse(productMap);
+                                cartItemCache.setProduct(product);
+                            }
+                            
+                            return cartItemCache;
+                        }
+                        
+                        return (CartItemCache) cached;
+                    } catch (Exception e) {
+                        System.err.println("Error processing cached cart item for key: " + key + " - " + e.getMessage());
+                        // Xóa cache item bị lỗi
+                        redisTemplate.delete(key);
+                        return null;
                     }
-                    
-                    return (CartItemCache) cached;
                 })
                 .filter(item -> item != null)
                 .collect(Collectors.toList());
