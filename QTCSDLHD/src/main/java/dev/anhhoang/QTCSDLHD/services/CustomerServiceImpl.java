@@ -41,6 +41,9 @@ public class CustomerServiceImpl implements CustomerService {
     @Autowired
     private RecommendationService recommendationService;
 
+    @Autowired
+    private CartCacheService cartCacheService;
+
     @Override
     public UserProfileResponse addProductToCart(String customerId, AddToCartRequest request) {
         User user = userRepository.findById(customerId)
@@ -63,17 +66,25 @@ public class CustomerServiceImpl implements CustomerService {
                 .filter(item -> item.getProduct_id().equals(request.getProductId()))
                 .findFirst();
 
+        int newQuantity;
         if (existingCartItem.isPresent()) {
-            existingCartItem.get().setQuantity(existingCartItem.get().getQuantity() + request.getQuantity());
+            newQuantity = existingCartItem.get().getQuantity() + request.getQuantity();
+            existingCartItem.get().setQuantity(newQuantity);
         } else {
             CartItem newCartItem = new CartItem();
             newCartItem.setProduct_id(product.get_id());
             newCartItem.setQuantity(request.getQuantity());
             cart.getItems().add(newCartItem);
+            newQuantity = request.getQuantity();
         }
+        
         cart.setStatus("active");
         cart.setUpdated_at(LocalDateTime.now());
         cartRepository.save(cart);
+        
+        // Cache sản phẩm khi thêm vào giỏ hàng
+        cartCacheService.cacheProductWhenAddToCart(customerId, request.getProductId(), newQuantity);
+        
         return convertToUserProfileResponse(user);
     }
 
@@ -90,6 +101,10 @@ public class CustomerServiceImpl implements CustomerService {
         cart.setStatus("active");
         cart.setUpdated_at(LocalDateTime.now());
         cartRepository.save(cart);
+        
+        // Xóa sản phẩm khỏi cache giỏ hàng
+        cartCacheService.removeCartItemFromCache(customerId, request.getProductId());
+        
         return convertToUserProfileResponse(user);
     }
 
@@ -105,8 +120,12 @@ public class CustomerServiceImpl implements CustomerService {
                 .orElseThrow(() -> new RuntimeException("Product not found in cart"));
         if (quantity <= 0) {
             cart.getItems().remove(cartItem);
+            // Xóa khỏi cache nếu quantity <= 0
+            cartCacheService.removeCartItemFromCache(customerId, productId);
         } else {
             cartItem.setQuantity(quantity);
+            // Cập nhật cache với quantity mới
+            cartCacheService.updateCartItemQuantity(customerId, productId, quantity);
         }
         cart.setStatus("active");
         cart.setUpdated_at(LocalDateTime.now());
@@ -118,11 +137,28 @@ public class CustomerServiceImpl implements CustomerService {
     public List<ProductResponse> getCartProducts(String customerId) {
         User user = userRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
+        
+        // Thử lấy từ cache trước
+        List<CartCacheService.CartItemCache> cachedItems = cartCacheService.getAllCartItemsFromCache(customerId);
+        
+        if (!cachedItems.isEmpty()) {
+            System.out.println("Using cached cart items for customer: " + customerId);
+            return cachedItems.stream()
+                    .map(cachedItem -> {
+                        ProductResponse productResponse = cachedItem.getProduct();
+                        productResponse.setQuantity(cachedItem.getQuantity());
+                        return productResponse;
+                    })
+                    .collect(Collectors.toList());
+        }
+        
+        // Nếu không có cache, lấy từ database và cache lại
         Cart cart = cartRepository.findByCustomerId(customerId)
                 .orElse(null);
         if (cart == null || cart.getItems().isEmpty())
             return new ArrayList<>();
-        return cart.getItems().stream()
+            
+        List<ProductResponse> products = cart.getItems().stream()
                 .map(cartItem -> productRepository.findById(cartItem.getProduct_id())
                         .map(product -> {
                             ProductResponse productResponse = new ProductResponse();
@@ -155,6 +191,11 @@ public class CustomerServiceImpl implements CustomerService {
                         }))
                 .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toList());
+        
+        // Cache lại dữ liệu vừa lấy từ database
+        cartCacheService.syncCacheWithDatabase(customerId, cart.getItems());
+        
+        return products;
     }
 
     @Override
